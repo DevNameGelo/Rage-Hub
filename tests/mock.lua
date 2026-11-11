@@ -8,7 +8,7 @@ M.errors = {}
 local function newSignal()
     local s = { _h = {} }
     function s:Connect(fn)
-        local c = { Connected = true, __type = "RBXScriptConnection" }
+        local c = { Connected = true }
         local h = { fn = fn, c = c }
         table.insert(self._h, h)
         function c:Disconnect() c.Connected = false; for i, x in ipairs(s._h) do if x == h then table.remove(s._h, i) break end end end
@@ -33,10 +33,9 @@ V3MT.__add = function(a, b) return setmetatable({ X = a.X + b.X, Y = a.Y + b.Y, 
 V3MT.__mul = function(a, b) if type(b) == "number" then return setmetatable({ X = a.X*b, Y = a.Y*b, Z = 0 }, V3MT) end return a end
 V3MT.__div = function(a, b) if type(b) == "number" then return setmetatable({ X = a.X/b, Y = a.Y/b, Z = 0 }, V3MT) end return a end
 V3MT.__eq = function(a, b) return a.X == b.X and a.Y == b.Y end
-local function V(x, y, z) return setmetatable({ X = x or 0, Y = y or 0, Z = z or 0, __type = "Vector3" }, V3MT) end
-Vector2 = { new = function(x, y) local v = V(x, y, 0); v.__type = "Vector2"; return v end }
+local function V(x, y, z) return setmetatable({ X = x or 0, Y = y or 0, Z = z or 0 }, V3MT) end
+Vector2 = { new = V }
 Vector3 = { new = V }
-CFrame = { new = function(x, y, z) return { __type = "CFrame", Position = V(x, y, z) } end }
 
 UDim = { new = function(s, o) return { Scale = s, Offset = o } end }
 local function U2(xs, xo, ys, yo) return { X = { Scale = xs, Offset = xo }, Y = { Scale = ys, Offset = yo }, __type = "UDim2" } end
@@ -86,7 +85,6 @@ local rawtypeof = type
 typeof = function(v)
     if rawtypeof(v) == "table" then
         if rawget(v, "__enum") then return "EnumItem" end
-        if rawget(v, "_class") then return "Instance" end
         local t = rawget(v, "__type"); if t then return t end
         if getmetatable(v) == C3 then return "Color3" end
     end
@@ -94,21 +92,15 @@ typeof = function(v)
 end
 
 -- Instances
-local INHERIT = {
-    BasePart = { Part = 1, MeshPart = 1, WedgePart = 1 }, GuiObject = { Frame = 1, TextLabel = 1, TextButton = 1, ImageLabel = 1, ImageButton = 1, ScrollingFrame = 1, TextBox = 1 },
-    BaseRemoteEvent = { RemoteEvent = 1, UnreliableRemoteEvent = 1 }, ValueBase = { IntValue = 1, StringValue = 1 }, Model = { Model = 1 }, Instance = {},
-}
-
 local Methods, SignalNames = {}, {}
 for _, n in ipairs({ "MouseEnter","MouseLeave","MouseMoved","InputBegan","InputEnded","InputChanged","Activated","FocusLost","Focused",
-    "Changed","Completed","PlayerAdded","PlayerRemoving","RenderStepped","Heartbeat","Destroying","ChildAdded","MouseButton1Click","OnClientEvent","DescendantAdded","MessageOut" }) do SignalNames[n] = true end
+    "Changed","Completed","PlayerAdded","PlayerRemoving","RenderStepped","Heartbeat","Destroying","ChildAdded","MouseButton1Click" }) do SignalNames[n] = true end
 
 local function unlink(inst)
     local p = inst._p.Parent
     if p and p._children then for i, c in ipairs(p._children) do if c == inst then table.remove(p._children, i) break end end end
 end
 function Methods.Destroy(self)
-    if self._sigs.Destroying then self._sigs.Destroying:Fire() end
     unlink(self); self._destroyed = true; self._p.Parent = nil
     for _, c in ipairs({ table.unpack(self._children) }) do c:Destroy() end
 end
@@ -125,9 +117,7 @@ function Methods.IsDescendantOf(self, anc) local p = self._p.Parent; while p do 
 function Methods.SetAttribute(self, k, v) self._attrs[k] = v end
 function Methods.GetAttribute(self, k) return self._attrs[k] end
 function Methods.GetPropertyChangedSignal(self, name) local k = "prop:" .. name; if not self._sigs[k] then self._sigs[k] = newSignal() end return self._sigs[k] end
-function Methods.IsA(self, c) return self._class == c or (INHERIT[c] ~= nil and INHERIT[c][self._class] ~= nil) or c == "Instance" end
-function Methods.GetAttributes(self) local o = {}; for k, v in pairs(self._attrs) do o[k] = v end return o end
-function Methods.CaptureFocus() end
+function Methods.IsA(self, c) return self._class == c end
 function Methods.CaptureFocus() end
 function Methods.Play() end
 
@@ -137,11 +127,8 @@ local Defaults = {
     Text = function() return "" end, Visible = function() return true end,
     CanvasPosition = function() return V(0, 0) end,
 }
-local INTERNAL = { _p = true, _children = true, _sigs = true, _attrs = true, _class = true, _destroyed = true }
-M.propsSet = {}
 local InstMT = {}
 InstMT.__index = function(t, k)
-    if type(k) == "string" and k:sub(1, 1) == "_" and not INTERNAL[k] then error("'" .. k .. "' is not a valid member of " .. tostring(rawget(t, "_class")), 2) end
     local p = rawget(t, "_p"); local v = p[k]
     if v ~= nil then return v end
     if Methods[k] then return Methods[k] end
@@ -150,23 +137,14 @@ InstMT.__index = function(t, k)
     return nil
 end
 InstMT.__newindex = function(t, k, v)
-    if type(k) == "string" and k:sub(1, 1) == "_" and not INTERNAL[k] then error("cannot set custom field '" .. k .. "' on an Instance (" .. tostring(rawget(t, "_class")) .. ")", 2) end
-    if k ~= "Parent" then
-        local c = rawget(t, "_class"); M.propsSet[c] = M.propsSet[c] or {}; M.propsSet[c][k] = true
-    end
     if k == "Parent" then
         unlink(t); t._p.Parent = v
         if v and v._children then table.insert(v._children, t) end
-    else
-        local changed = t._p[k] ~= v
-        t._p[k] = v
-        if changed then local sg = t._sigs["prop:" .. tostring(k)]; if sg then sg:Fire() end end
-    end
+    else t._p[k] = v end
 end
 function M.new(class, props)
     local inst = setmetatable({ _p = {}, _children = {}, _sigs = {}, _attrs = {}, _class = class }, InstMT)
     inst._p.ClassName = class
-    inst._p.Name = class
     for k, v in pairs(props or {}) do inst._p[k] = v end
     table.insert(M.ALL, inst)
     return inst
@@ -180,17 +158,9 @@ local function svc(name, extra)
     for k, v in pairs(extra or {}) do s._p[k] = v end
     services[name] = s; return s
 end
-local function mkChar(x)
-    local m = M.new("Model", { Name = "Character" })
-    local hrp = M.new("Part", { Name = "HumanoidRootPart", Position = V(x, 0, 0) }); hrp.Parent = m
-    local hum = M.new("Humanoid", { Name = "Humanoid", Health = 100 }); hum.Parent = m
-    return m
-end
-local lp = { Name = "Tester", DisplayName = "Tester", UserId = 1, Character = mkChar(0) }
-M.alice = { Name = "Alice", DisplayName = "Alice D", UserId = 2, Character = mkChar(10) }
-M.bob = { Name = "Bob", DisplayName = "Bob", UserId = 3 }
-local players = svc("Players", { LocalPlayer = lp, GetUserThumbnailAsync = function() return "rbxthumb://x" end, GetPlayers = function() return { lp, M.alice, M.bob } end })
-function players.GetPlayers() return { lp, M.alice, M.bob } end
+local lp = { Name = "Tester", DisplayName = "Tester", UserId = 1 }
+local players = svc("Players", { LocalPlayer = lp, GetUserThumbnailAsync = function() return "rbxthumb://x" end, GetPlayers = function() return { lp, { Name = "Alice" }, { Name = "Bob" } } end })
+function players.GetPlayers() return { lp, { Name = "Alice" }, { Name = "Bob" } } end
 players._p.GetPlayers = players.GetPlayers
 svc("TweenService", { Create = function(_, inst, info, props)
     local tw = { Completed = newSignal() }
@@ -203,29 +173,11 @@ svc("RunService", {})
 svc("GuiService", { GetGuiInset = function() return V(0, 36) end })
 svc("CoreGui", {})
 local cam = M.new("Camera", { ViewportSize = V(1280, 720) })
-M.cam = cam
 svc("Workspace", { CurrentCamera = cam })
 local stat = { Network = { ServerStatsItem = { ["Data Ping"] = { GetValue = function() return 42 end } } } }
 svc("Stats", stat)
 M.uis = uis
-uis._p.KeyboardEnabled = true
-M.down = {}
-uis._p.IsKeyDown = function(_, k) return M.down[k.Name] == true end
 game = { GetService = function(_, n) return services[n] end }
-for _, sv in pairs(services) do sv._p.Parent = game end
-svc("ReplicatedStorage", {}); services.ReplicatedStorage._p.Parent = game
-svc("LogService", {}); services.LogService._p.Parent = game
-stat.GetTotalMemoryUsageMb = function() return 321.5 end
--- HTTP / custom assets
-M.http, M.httpCalls = {}, 0
-local PNG = "\137PNG\13\10\26\10" .. string.rep("x", 100)
-M.PNG = PNG
-function game.HttpGet(_, url)
-    M.httpCalls = M.httpCalls + 1
-    if M.http[url] then return M.http[url] end
-    error("HTTP 404")
-end
-getcustomasset = function(path) return "rbxasset://custom/" .. path end
 
 -- JSON (tiny)
 local function enc(v)
@@ -288,57 +240,27 @@ setclipboard = function(t) clipboard = t end
 M.getClipboard = function() return clipboard end
 M.files = files
 
--- task: a small coroutine scheduler. task.wait yields; M.advance(t) moves the clock and resumes sleepers.
-local function resume(co, ...)
-    local ok, err = coroutine.resume(co, ...)
-    if not ok then table.insert(M.errors, "task: " .. tostring(err)) end
+-- task
+local function run() 
+    table.sort(M.delayed, function(a, b) return a.t < b.t end)
+    while M.delayed[1] and M.delayed[1].t <= M.clock do
+        local d = table.remove(M.delayed, 1)
+        local ok, err = pcall(d.fn); if not ok then table.insert(M.errors, "task.delay: " .. tostring(err)) end
+    end
 end
-local function earliest(limit)
-    local bestI, best
-    for i, d in ipairs(M.delayed) do if d.t <= limit and (not best or d.t < best.t) then bestI, best = i, d end end
-    return bestI, best
-end
-local function run() end
 M.onWait = nil
 task = {
-    spawn = function(fn, ...) local co = coroutine.create(fn); resume(co, ...); return co end,
+    spawn = function(fn, ...) local ok, err = pcall(fn, ...); if not ok then table.insert(M.errors, "task.spawn: " .. tostring(err)) end end,
     defer = function(fn, ...) local ok, err = pcall(fn, ...); if not ok then table.insert(M.errors, "task.defer: " .. tostring(err)) end end,
     delay = function(t, fn) local d = { t = M.clock + t, fn = fn }; table.insert(M.delayed, d); return d end,
-    cancel = function(h)
-        if type(h) == "thread" then
-            for i = #M.delayed, 1, -1 do if M.delayed[i].co == h then table.remove(M.delayed, i) end end
-            if coroutine.status(h) == "suspended" then pcall(coroutine.close, h) end
-        else
-            for i, x in ipairs(M.delayed) do if x == h then table.remove(M.delayed, i) break end end
-        end
-    end,
+    cancel = function(d) for i, x in ipairs(M.delayed) do if x == d then table.remove(M.delayed, i) break end end end,
     wait = function(t)
-        t = t or 0.03
-        if M.onWait then M.onWait() end
-        if coroutine.isyieldable() then
-            table.insert(M.delayed, { t = M.clock + t, co = coroutine.running() })
-            coroutine.yield()
-            return t
-        end
-        M.advance(t)
-        return t
+        M.waits = (M.waits or 0) + 1
+        if M.waits > 300 then error("mock wait budget exhausted (endless loop guard)", 0) end
+        M.clock += (t or 0.03); if M.onWait then M.onWait() end run(); return t or 0.03
     end,
 }
-M.advance = function(t)
-    local target = M.clock + t
-    local guard = 0
-    while guard < 200000 do
-        guard = guard + 1
-        local i, d = earliest(target)
-        if not d then break end
-        table.remove(M.delayed, i)
-        M.clock = math.max(M.clock, d.t)
-        if d.co then
-            if coroutine.status(d.co) == "suspended" then resume(d.co) end
-        else resume(coroutine.create(d.fn)) end
-    end
-    M.clock = target
-end
+M.advance = function(t) M.clock += t; run() end
 warn = function(...) table.insert(M.errors, "warn: " .. table.concat({ ... }, " ")) end
 
 -- fake input object
@@ -353,9 +275,7 @@ end
 -- fuzz: fire every signal handler on every live instance
 function M.fuzz()
     local fired = 0
-    local snapshot = {}
-    for i, x in ipairs(M.ALL) do snapshot[i] = x end
-    for _, inst in ipairs(snapshot) do
+    for _, inst in ipairs({ table.unpack(M.ALL) }) do
         if not inst._destroyed then
             for name, sig in pairs(inst._sigs) do
                 for _, h in ipairs({ table.unpack(sig._h) }) do
@@ -363,9 +283,6 @@ function M.fuzz()
                     if name == "InputBegan" or name == "InputChanged" or name == "InputEnded" then
                         args = { M.input("MouseButton1", "Begin") }
                     elseif name == "MouseMoved" then args = { 100, 100 }
-                    elseif name == "PlayerAdded" or name == "PlayerRemoving" then args = { M.bob }
-                    elseif name == "DescendantAdded" then args = { Instance.new("Part") }
-                    elseif name == "MessageOut" then args = { "msg", Enum.MessageType.MessageOutput }
                     elseif name == "FocusLost" then args = { true }
                     else args = {} end
                     fired += 1

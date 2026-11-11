@@ -1,70 +1,132 @@
--- Rage Hub v1 · tour: core UI, state binding, notifications, logs, themes, config, branding,
--- a custom module and dynamic module enabling. (Focused examples live in /examples.)
-local RageHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/devnamegelo/Rage-Hub/main/RageHub.lua"))()
+-- Rage Hub v2 · full showcase
+-- After uploading RageHub.lua to your repo, point this URL at it.
+local RageHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/rgcmainhub/Rage-Hub/main/RageHub.lua"))()
+
+local Players = game:GetService("Players")
+local function humanoid()
+    local char = Players.LocalPlayer and Players.LocalPlayer.Character
+    return char and char:FindFirstChildOfClass("Humanoid")
+end
 
 local Window = RageHub:CreateWindow({
     Name = "Rage Hub",
-    Subtitle = "RGC UI Framework · v" .. RageHub.Version,
-    Theme = "Rage",
-    ConfigFolder = "RageHub/Tour",
-    AutoSave = "autosave",
-    Splash = { Subtitle = "Loading tour..." },        -- uses the official theme image
-    Features = { Notifications = true },              -- everything else is opt-in
+    Subtitle = "Showcase · v2.0.0",
+    Theme = "Midnight",              -- Midnight, Crimson, Ocean, Emerald, Sakura, Sunset, Dracula, Nord, Void, Light
+    ToggleKey = Enum.KeyCode.RightShift,
+    ConfigFolder = "RageHub/Showcase",
+    AutoSave = "autosave",           -- saves on every change (call Window:LoadConfig() at the end)
+    Splash = { Title = "Rage Hub", Subtitle = "Loading showcase...", Duration = 1.2 },
+    Watermark = { Text = "Rage Hub", ShowFPS = true, ShowPing = true },
 })
 
----------------------------------------------------------------- core UI + state
-local Main = Window:CreateTab("Main", "⚡")
-local Core = Main:CreateSection("Core")
-Core:CreateToggle({ Name = "Auto Steal", State = "AutoSteal", Description = "Bound to Window.State.AutoSteal", Keybind = Enum.KeyCode.V })
-Core:CreateSlider({ Name = "Range", Flag = "Range", Range = { 5, 100 }, Default = 25, Suffix = " studs" })
-Core:CreateSegmented({ Name = "Priority", Flag = "Priority", Options = { "Nearest", "Rarest", "Richest" }, Default = "Nearest" })
-Core:CreatePlayerDropdown({ Name = "Target", Flag = "Target" })
-Window.State:Watch("AutoSteal", function(on) Window.Logger:Info("Tour", "AutoSteal = " .. tostring(on)) end)
+----------------------------------------------------------------- PLAYER
+local Player = Window:CreateTab("Player", "⚡")
 
-local Stats = Main:CreateSection("Live")
-local progress = Stats:CreateProgressBar({ Name = "Cooldown", Max = 100, Suffix = "%" })
-Window.Tasks:Every(0.5, function() progress:Set((os.clock() * 10) % 100) end, "demo-progress")   -- owned + cancelled with the window
-
----------------------------------------------------------------- notifications / dialogs
-local Msg = Main:CreateSection("Feedback")
-Msg:CreateButton({ Name = "Notification", ButtonText = "Show", Callback = function()
-    Window:Notify({ Title = "Hello!", Content = "Notifications queue, stack and can have buttons.", Type = "success",
-        Buttons = { { Text = "Nice", Callback = function() print("clicked") end } } })
-end })
-Msg:CreateButton({ Name = "Progress notification", ButtonText = "Run", Callback = function()
-    local n = Window:Notify({ Title = "Working...", Type = "progress" })
-    local t = 0
-    Window.Tasks:Every(0.3, function(token) t += 0.1; n:SetProgress(t); if t >= 1 then token:Cancel() end end)
-end })
-Msg:CreateButton({ Name = "Destructive dialog", ButtonText = "Open", Callback = function()
-    Window:Dialog({ Type = "Destructive", Title = "Wipe data?", Content = "This cannot be undone.", Callback = function() Window:Notify({ Title = "Wiped" }) end })
-end })
-
----------------------------------------------------------------- dynamic modules (opt-in)
-local Mods = Window:CreateTab("Modules", "▣")
-local Opt = Mods:CreateSection("Enable only what you need")
-Opt:CreateToggle({ Name = "Developer console", Description = "Live logs, filters, search, export", Callback = function(on) Window:ToggleModule("Console", on) end })
-Opt:CreateToggle({ Name = "Performance monitor", Callback = function(on) Window:ToggleModule("Performance", on) end })
-
----------------------------------------------------------------- a custom module
-Window:RegisterModule({
-    Name = "Greeter", DisplayName = "Greeter",
-    Enable = function(self, ctx)
-        local tab = ctx:CreateTab("Greeter", "☺")
-        tab:CreateButton({ Name = "Greet", ButtonText = "Hi", Callback = function() ctx:Notify({ Title = "Hello from a custom module" }) end })
-        ctx.Logger:Success("Greeter ready")
+local Move = Player:CreateSection("Movement")
+Move:CreateToggle({
+    Name = "Speed Boost",
+    Description = "Faster walk speed",
+    Flag = "SpeedOn",
+    Keybind = Enum.KeyCode.V,        -- optional hotkey chip on the toggle
+    Tooltip = "Toggle with the V key",
+    Callback = function(on)
+        local h = humanoid()
+        if h then h.WalkSpeed = on and (Window.Flags.Speed or 32) or 16 end
     end,
 })
-Opt:CreateToggle({ Name = "Custom module (Greeter)", Callback = function(on) Window:ToggleModule("Greeter", on) end })
+Move:CreateSlider({
+    Name = "Walk Speed", Flag = "Speed", Range = { 16, 150 }, Increment = 1, Suffix = " sp", Default = 32,
+    Callback = function(v)
+        local h = humanoid()
+        if h and Window.Flags.SpeedOn then h.WalkSpeed = v end
+    end,
+})
+Move:CreateRangeSlider({
+    Name = "Jump Power Range", Flag = "JumpRange", Range = { 30, 200 }, Default = { 50, 120 },
+    Callback = function(lo, hi) print("jump range", lo, hi) end,
+})
+Move:CreateSegmented({
+    Name = "Movement Mode", Flag = "Mode", Options = { "Walk", "Fly", "Noclip" }, Default = "Walk",
+    Callback = function(v) print("mode:", v) end,
+})
 
----------------------------------------------------------------- about / branding / settings / config
+local Targets = Player:CreateSection("Targeting")
+Targets:CreatePlayerDropdown({
+    Name = "Target Player", Flag = "Target", Tooltip = "Auto-updates as players join / leave",
+    Callback = function(name) print("target:", name) end,
+})
+Targets:CreateDropdown({
+    Name = "Teleport To", Flag = "Place", Search = true,
+    Options = { "Spawn", "Shop", "Arena", "Lobby", "Bank", "Cave", "Island", "Tower", "Dock", "Castle" },
+    Callback = function(v) print("tp:", v) end,
+})
+Targets:CreateDropdown({
+    Name = "Filters", Flag = "Filters", Multi = true, Options = { "Players", "NPCs", "Items", "Chests" }, Default = { "Players" },
+    Callback = function(list) print("filters:", table.concat(list, ", ")) end,
+})
+Targets:CreateKeybind({
+    Name = "Hold to Aim", Flag = "AimKey", Mode = "Hold", Default = Enum.KeyCode.E,
+    Callback = function(held) print("aim held:", held) end,
+})
+
+local Actions = Player:CreateSection("Actions")
+Actions:CreateButton({
+    Name = "Reset Character", ButtonText = "Reset", Confirm = "Reset your character?", Cooldown = 3,
+    Callback = function()
+        local h = humanoid()
+        if h then h.Health = 0 end
+        Window:Notify({ Title = "Character reset", Type = "warning" })
+    end,
+})
+
+----------------------------------------------------------------- VISUALS
+local Visuals = Window:CreateTab("Visuals", "◉")
+local Colors = Visuals:CreateSection("Colors")
+Colors:CreateColorPicker({
+    Name = "ESP Color", Flag = "EspColor", Default = Color3.fromRGB(255, 80, 120),
+    Callback = function(c) print("esp color", c) end,
+})
+Colors:CreateInput({ Name = "Label Text", Flag = "LabelText", Default = "Rage", Placeholder = "ESP label..." })
+Colors:CreateInput({ Name = "Max Distance", Flag = "MaxDist", Numeric = true, Default = 500 })
+
+local Stats = Visuals:CreateSection("Live Stats")
+local fuel = Stats:CreateProgressBar({ Name = "Boost Fuel", Default = 100, Suffix = "%" })
+task.spawn(function()
+    while Window.Gui and Window.Gui.Parent do   -- stops when the window is destroyed
+        for v = 100, 0, -10 do fuel:Set(v); task.wait(0.4) end
+        for v = 0, 100, 10 do fuel:Set(v); task.wait(0.2) end
+    end
+end)
+
+----------------------------------------------------------------- CONSOLE
+local Console = Window:CreateTab("Console", "▶")
+local log = Console:CreateLog({ Name = "Output", Height = 170 })
+log:Add("Rage Hub ready.")
+Window:OnChanged(function(flag, value)                -- every flagged element reports here
+    log:Add(("%s = %s"):format(flag, tostring(typeof(value) == "table" and table.concat(value, ", ") or value)))
+end)
+Console:CreateButton({ Name = "Clear Log", ButtonText = "Clear", Callback = function() log:Clear() end })
+
+----------------------------------------------------------------- ABOUT
 local About = Window:CreateTab("About", "ℹ")
-About:CreateBrand({ Name = "About" })               -- official icon + theme image, name, developer, version
-About:CreateLink({ Name = "GitHub", Url = "https://github.com/devnamegelo/Rage-Hub" })
--- Custom branding for YOUR script (launcher icon + banner):
---   Window:SetBranding({ Icon = "rbxassetid://123456", ThemeImage = false, Name = "My Tool" })
+About:CreateParagraph({ Title = "Rage Hub", Content = "A modern, mobile-friendly UI library for Roblox. One file, no dependencies. Themes, configs, search, tooltips and more." })
+About:CreateLink({ Name = "GitHub", Url = "https://github.com/rgcmainhub/Rage-Hub" })
+About:CreateDivider("Tips")
+About:CreateLabel("Tap a section title to collapse it")
+About:CreateLabel("Drag the ◢ corner to resize the window")
+About:CreateButton({
+    Name = "Test Notification", ButtonText = "Show",
+    Callback = function()
+        Window:Notify({
+            Title = "Hello!", Content = "Notifications can have buttons.", Type = "success", Duration = 6,
+            Buttons = { { Text = "Nice", Callback = function() print("clicked") end } },
+        })
+    end,
+})
 
-Window:EnableCommandPalette()                        -- Ctrl+K
+-- Built-in Settings: themes, accent, scale, transparency, toggle key, sounds,
+-- watermark, config save/load/export/import, reset position, unload.
 Window:CreateSettingsTab()
-Window:LoadConfig()
-Window:Notify({ Title = "Rage Hub v" .. RageHub.Version, Content = "Press RightShift to hide / show.", Type = "success" })
+
+Window:LoadConfig()   -- restore previous session (call AFTER all elements exist)
+Window:Notify({ Title = "Rage Hub loaded", Content = "Press RightShift to hide / show.", Type = "success" })
