@@ -1,145 +1,102 @@
-<div align="center">
+<p align="center"><img src="assets/logo.png" width="120" alt="Rage Hub"></p>
 
-# Rage Hub
+<h1 align="center">Rage Hub</h1>
+<p align="center">A modern, clean, lag-friendly Roblox UI library for <b>mobile and PC</b>.<br>
+165 built-in vector icons (no emoji, no asset ids) · 7 themes · built-in Settings tab</p>
 
-**A modern, mobile-friendly UI library for Roblox script hubs.**
-One file · no dependencies · 10 themes · config saving · works on touch and PC
-
-</div>
+```lua
+local RageHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/devnamegelo/Rage-Hub/main/RageHub.lua"))()
+```
 
 ## Features
 
-- Glass dark UI with animated accent line, sidebar tabs, tab icons, per-tab **search**
-- Elements: Toggle (+ hotkey chip), Button (+ confirm / cooldown), Slider, **Range Slider**, Dropdown (single / multi / searchable), **Player Dropdown**, **Segmented**, Input, Keybind (Press / Hold / Toggle), Color Picker (+ hex), **Progress Bar**, **Log**, Image, Label, Paragraph, Link, Divider, collapsible Sections
-- Notifications (with buttons), modal dialogs, tooltips, watermark (FPS / ping), splash screen
-- 10 built-in themes, live switching, custom themes, custom accent
-- Resizable and draggable window, collapsible sidebar, UI scale, minimize, floating **R** launcher on mobile
-- Config system: save / load / delete / auto-save / JSON export & import
-- Built-in **Settings tab** that wires all of the above for you
-
-## Install
-
-```lua
-local RageHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/rgcmainhub/Rage-Hub/main/RageHub.lua"))()
-```
+- **Mobile + PC**: auto scales to the screen, touch-friendly rows, draggable and resizable window, floating open button, collapsible sidebar, 1 or 2 column pages depending on width.
+- **Built for low lag**: no per-frame loops, drag handlers only exist while a finger/mouse is down, popups are built lazily and reused, notification cap, and a *Reduce Animations* switch that turns every tween into an instant set.
+- **165 real icons**: drawn with Frames from a 24x24 vector grid, tintable and sharp at any size. Preview in [ICONS.md](ICONS.md).
+- **Elements**: Toggle, Slider (with typeable value), Dropdown (single / multi / search), Button, Input, Keybind, Color Picker, Label, Paragraph, Divider.
+- **Global search**, collapsible sections, notifications, themes (live switching), transparency and scale sliders.
+- **Config system** with save / load / delete / auto load.
+- **Built-in Settings tab** (one line): Auto Rejoin, Rejoin Same Server, Auto Execute, Anti AFK, Server Hop (least / most / random), Rejoin, Copy / Join Job ID, UI Scale, Transparency, Theme, Toggle Key, Floating Button, Reduce Animations, FPS Cap, Low Graphics, White Screen, Config manager, Unload.
 
 ## Quick start
 
 ```lua
+local RageHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/devnamegelo/Rage-Hub/main/RageHub.lua"))()
+
 local Window = RageHub:CreateWindow({
-    Name = "My Hub",
-    Subtitle = "v1.0",
-    Theme = "Midnight",
-    ToggleKey = Enum.KeyCode.RightShift,
+    Name = "Rage Hub",
+    Subtitle = "My Game",
+    Theme = "Rage",                          -- Rage, Crimson, Ocean, Emerald, Sakura, Midnight, Light
+    ToggleKey = Enum.KeyCode.RightControl,   -- PC only, mobile uses the floating button
+    AutoExecuteScript = 'loadstring(game:HttpGet("https://example.com/my_script.lua"))()',
 })
 
-local Tab = Window:CreateTab("Main", "⚡")
-local Section = Tab:CreateSection("Player")
+local Tab = Window:CreateTab("Farm", "sprout")          -- any icon name from ICONS.md
+local Section = Tab:CreateSection("Auto Farm", "zap")
 
 Section:CreateToggle({
-    Name = "God Mode",
-    Flag = "God",            -- saved in configs, readable via Window.Flags.God
-    Default = false,
+    Name = "Auto Farm", Description = "Farms for you.", Flag = "AutoFarm", Default = false,
     Callback = function(on) print(on) end,
 })
 
-Window:CreateSettingsTab()
-Window:LoadConfig()          -- after all elements exist
+Window:CreateTabLabel("System")
+Window:CreateSettingsTab()      -- Auto Rejoin, Auto Execute, Anti AFK, Server Hop, FPS, Config ...
+Window:AutoLoad()               -- loads the config marked "Auto Load"
 ```
 
-See [`Example.lua`](Example.lua) for every element.
+A full example is in [`examples/Example.lua`](examples/Example.lua).
 
-## Window options
+## API
 
-| Option | Type | Default | Notes |
-|---|---|---|---|
-| `Name` | string | `"Rage Hub"` | Title |
-| `Subtitle` | string | `""` | Small text under the title |
-| `Theme` | string / table | `"Midnight"` | Built-in name or a colors table |
-| `ToggleKey` | KeyCode | `RightShift` | Show / hide key |
-| `Width`, `Height` | number | `620`, `400` | Max size (shrinks on small screens) |
-| `Scale` | number | `1` | UI scale (0.6 – 1.5) |
-| `Splash` | bool / table | on | `false` to skip, or `{Title, Subtitle, Duration}` |
-| `Watermark` | bool / table | off | `{Text, ShowFPS, ShowPing}` |
-| `Launcher` | bool | touch devices | Floating draggable **R** button |
-| `Resizable` | bool | `true` | Drag the ◢ corner |
-| `Search` | bool | `true` | Search box in the sidebar |
-| `Sounds` | bool | `false` | UI sounds |
-| `ConfigFolder` | string | `RageHub/<Name>` | Where configs are stored |
-| `AutoSave` | string | `nil` | Config name to save to on every change |
-| `RandomName` | bool | `true` | Randomised ScreenGui name |
-| `OnUnload` | function | `nil` | Called when the window is destroyed |
+### Library
+| Call | Description |
+|---|---|
+| `RageHub:CreateWindow(cfg)` | `Name, Subtitle, Version, Theme, Size (Vector2), ToggleKey, ConfigFolder, AutoExecuteScript, FloatingButton, StartHidden` |
+| `RageHub:Notify({Title, Content, Type, Duration, Icon})` | `Type`: `info`, `success`, `warning`, `error` |
+| `RageHub:SetTheme(name)` / `RageHub:AddTheme(name, colors)` | Live theme switching, custom themes (keys: `Bg Panel Card Elevated Stroke Text SubText Muted Accent Accent2`) |
+| `RageHub:CreateIcon(parent, name, size, color)` | Use the icons in your own UI. `color` can be a `Color3` or a theme key like `"Accent"` |
+| `RageHub:GetIcons()` / `RageHub:HasIcon(name)` | List icon names |
+| `RageHub.Flags` / `RageHub.Options` | Current values / element objects by `Flag` |
+| `RageHub:Unload()` | Remove everything |
 
-## Elements
+### Window
+`Window:CreateTab(name, icon)` · `Window:CreateTabLabel(text)` · `Window:CreateSettingsTab()` · `Window:SelectTab(tabOrName)` · `Window:Toggle()` · `Window:SetVisible(bool)` · `Window:SetScale(n)` · `Window:SetTransparency(0-0.8)` · `Window:SetToggleKey(key)` · `Window:Notify(cfg)` · `Window:Rejoin()` · `Window:ServerHop("Least Players" | "Most Players" | "Random")` · `Window:JoinServer(jobId)` · `Window:SaveConfig(name)` · `Window:LoadConfig(name)` · `Window:DeleteConfig(name)` · `Window:ListConfigs()` · `Window:AutoLoad()` · `Window:Destroy()`
 
-Create elements on a **Tab** or a **Section** (`Tab:CreateSection("Name", {Collapsed = false})`).
-Every options table accepts `Name`, `Description`, `Tooltip`, `Flag`, `Locked`, `Visible`, `Callback`.
+### Tab / Section
+`Tab:CreateSection(name, icon, {Side = "Left" | "Right"})`. You can also call any element directly on a tab and it goes into a default section.
 
-| Method | Extra options | Callback receives |
+| Element | Config | Methods |
 |---|---|---|
-| `CreateButton` | `ButtonText`, `Confirm`, `Cooldown` | – |
-| `CreateToggle` | `Default`, `Keybind` | `boolean` |
-| `CreateSlider` | `Range`, `Increment`, `Suffix`, `Default` | `number` |
-| `CreateRangeSlider` | `Range`, `Increment`, `Suffix`, `Default = {lo, hi}` | `lo, hi` |
-| `CreateDropdown` | `Options`, `Default`, `Multi`, `Search`, `MaxHeight` | `string` or `{strings}` |
-| `CreatePlayerDropdown` | same as Dropdown, `IncludeSelf` | `string` |
-| `CreateSegmented` | `Options`, `Default` | `string` |
-| `CreateInput` | `Default`, `Placeholder`, `Numeric`, `Width`, `OnlyOnEnter`, `ClearOnEnter` | `value, enterPressed` |
-| `CreateKeybind` | `Default`, `Mode` (`Press`/`Hold`/`Toggle`), `OnChange` | key / held state |
-| `CreateColorPicker` | `Default` | `Color3` |
-| `CreateProgressBar` | `Default`, `Max`, `Suffix` | – |
-| `CreateLog` | `Height`, `MaxLines`, `Timestamps` | – |
-| `CreateImage` | `Image`, `Height`, `Crop` | – |
-| `CreateLink` | `Url` | copies to clipboard |
-| `CreateLabel(text)` · `CreateParagraph{Title, Content}` · `CreateDivider(text?)` | | |
+| `CreateToggle` | `Name, Description, Default, Flag, Callback(bool)` | `Set(bool)` |
+| `CreateSlider` | `Name, Min, Max, Increment, Default, Suffix, Flag, Callback(number)` | `Set(n)` |
+| `CreateDropdown` | `Name, Options, Default, Multi, Search, Flag, Callback(value)` | `Set(v)`, `Refresh(options, keepValue)` |
+| `CreateButton` | `Name, Description, ButtonText, Icon, Danger, Callback()` | `Fire()` |
+| `CreateInput` | `Name, Default, Placeholder, Numeric, Flag, Callback(text)` | `Set(v)` |
+| `CreateKeybind` | `Name, Default (KeyCode), Flag, Callback(key) (on press), OnChanged(key)` | `Set(key)` |
+| `CreateColorPicker` | `Name, Default (Color3), Flag, Callback(color)` | `Set(color)` |
+| `CreateLabel` | `Text, Icon` | `Set(text)` |
+| `CreateParagraph` | `Title, Content` | `Set(title, content)` |
+| `CreateDivider` | - | - |
 
-Every element returns an object: `:Get()` · `:Set(value, silent)` · `:SetName()` · `:SetDescription()` · `:SetLocked(bool)` · `:SetVisible(bool)` · `:OnChanged(fn)` · `:Destroy()`.
-Dropdowns also have `:Refresh(options, keepSelection)`; Logs have `:Add(text, color?)` / `:Clear()`; Progress bars `:Set(n)`.
+Every element also has `SetName`, `SetDescription`, `SetVisible`, `Destroy`, and `.Value`.
+Callbacks run once on creation with the default value; pass `CallOnCreate = false` to skip that. `Save = false` keeps an element out of configs.
 
-## Window methods
+## Auto Execute notes
 
-```lua
-Window:Notify({ Title = "Hi", Content = "Text", Type = "info", Duration = 4,   -- info | success | warning | error
-                Buttons = { { Text = "Undo", Callback = function() end } } })
-Window:Dialog({ Title = "Sure?", Content = "...", Buttons = { { Text = "No" }, { Text = "Yes", Primary = true, Callback = fn } } })
-Window:CreateSettingsTab("Settings")
-Window:CreateWatermark({ Text = "My Hub" })
-Window:CreateTabLabel("Group")            -- small heading in the sidebar
-Window:OnChanged(function(flag, value) end)
-Window:SaveConfig("name")  Window:LoadConfig("name")  Window:DeleteConfig("name")  Window:ListConfigs()
-Window:ExportConfig()      Window:ImportConfig(jsonString)
-Window:SetVisible(bool)  Window:Toggle()  Window:SetMinimized(bool)  Window:SetSidebarCollapsed(bool)
-Window:SetSize(w, h)  Window:SetScale(1.1)  Window:SetTitle("x")  Window:SetSubtitle("x")  Window:SelectTab("Main")
-Window:Destroy()
-RageHub:SetTheme("Ocean")   RageHub:SetAccent(Color3, Color3?)   RageHub:DestroyAll()
+Auto Execute uses your executor's `queue_on_teleport`. It queues your script when a teleport starts (Auto Rejoin, Server Hop, Rejoin and game teleports all count). Rejoining by hand from the Roblox menu does not fire a teleport, so use the built-in Rejoin button instead. Executors without `queue_on_teleport` get a clear notification instead of a silent failure.
+
+## Repo layout
+
+```
+RageHub.lua          <- the library (this is the file the raw URL loads)
+examples/Example.lua
+assets/logo.png|svg  assets/icons-preview.png
+ICONS.md             all icon names
+src/                 library sources (split by area)
+tools/gen_icons.py   icon source of truth + preview/logo generator
+tools/build.py       rebuilds RageHub.lua from src/
 ```
 
-## Themes
+Change icons: edit `tools/gen_icons.py`, run `python3 tools/gen_icons.py && python3 tools/build.py`.
 
-`Midnight` · `Crimson` · `Ocean` · `Emerald` · `Sakura` · `Sunset` · `Dracula` · `Nord` · `Void` · `Light`
-
-```lua
-RageHub:AddTheme("Mine", {
-    Background = Color3.fromRGB(10, 10, 14), Surface = Color3.fromRGB(20, 20, 28),
-    SurfaceHover = Color3.fromRGB(30, 30, 42), Stroke = Color3.fromRGB(50, 50, 70),
-    Text = Color3.fromRGB(240, 240, 250), SubText = Color3.fromRGB(140, 140, 165),
-    Accent = Color3.fromRGB(255, 80, 120), Accent2 = Color3.fromRGB(255, 160, 60),
-})
-RageHub:SetTheme("Mine")
-```
-
-## Tips
-
-- Config saving needs an executor with `writefile` / `readfile`; it is silently disabled otherwise.
-- Call `Window:LoadConfig()` **after** all elements are created.
-- The × button hides the window; reopen with the toggle key or the **R** launcher. **Settings → Unload** removes it.
-- On narrow screens (phones in portrait) the sidebar starts collapsed; tap **≡** in the top bar.
-- Tooltips show on hover (desktop only).
-
-## Tests
-
-`tests/run_tests.sh` runs 85 checks (every element, drag handling, search, config round-trip, notifications, dialogs, themes) on plain [Luau](https://github.com/luau-lang/luau) with a mocked Roblox environment. It can't verify rendering; always eyeball the UI in a real game too.
-
-## License
-
-MIT · Made by DevNameGelo · RGC
+MIT licensed.
