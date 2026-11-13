@@ -147,30 +147,6 @@ function RageHub:GetIcons()
 end
 function RageHub:HasIcon(name) return (ICONS[ICON_ALIASES[name] or name]) ~= nil end
 
---// theme switching ---------------------------------------------------------------
-function RageHub:AddTheme(name, t)
-	local base = RageHub.Themes.Rage
-	local out = {}
-	for k, v in pairs(base) do out[k] = (t and t[k]) or v end
-	RageHub.Themes[name] = out
-end
-
-function RageHub:SetTheme(name)
-	local t = RageHub.Themes[name]
-	if not t then return end
-	RageHub.CurrentTheme = name
-	for k, v in pairs(t) do Theme[k] = v end
-	for inst, map in pairs(themed) do
-		for prop, key in pairs(map) do pcall(function() inst[prop] = Theme[key] end) end
-	end
-	for ic, key in pairs(themedIcons) do ic:SetColor(Theme[key]) end
-	for g in pairs(themedGrad) do g.Color = ColorSequence.new(Theme.Accent, Theme.Accent2) end
-	for _, w in ipairs(RageHub.Windows) do
-		if w._onTheme then w:_onTheme() end
-	end
-end
-RageHub.CurrentTheme = "Rage"
-
 --// gui root + notifications --------------------------------------------------
 local function ensureGui()
 	if RageHub.Gui and RageHub.Gui.Parent then return RageHub.Gui end
@@ -203,8 +179,11 @@ local function ensureNotes()
 end
 
 function RageHub:Notify(cfg)
-	if not RageHub.Notifications then return end
 	cfg = type(cfg) == "table" and cfg or { Content = tostring(cfg) }
+	for _, w in ipairs(RageHub.Windows) do
+		pcall(function() w:Log((cfg.Title and (cfg.Title .. ": ") or "") .. (cfg.Content or ""), cfg.Type or "info") end)
+	end
+	if not RageHub.Notifications then return end
 	local holder = ensureNotes()
 	local kind = cfg.Type or "info"
 	local colorKey = NOTE_COLORS[kind] or "Accent"
@@ -220,10 +199,10 @@ function RageHub:Notify(cfg)
 	active[#active + 1] = slot
 	local card = new("Frame", {
 		Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(1, 40, 0, 0),
-		BackgroundColor3 = "@Card",
+		BackgroundColor3 = "@Popup", BackgroundTransparency = GLASS.Popup + 0.04,
 	}, slot)
-	corner(card, 10)
-	stroke(card, "Stroke", 1, 0.2)
+	corner(card, 12)
+	stroke(card, "Stroke", 1, 0.8)
 	pad(card, 12, 10, 12, 12)
 	local ic = makeIcon(card, cfg.Icon or NOTE_ICONS[kind], 18, colorKey)
 	ic.Instance.Position = UDim2.fromOffset(0, 1)
@@ -240,7 +219,7 @@ function RageHub:Notify(cfg)
 			TextYAlignment = Enum.TextYAlignment.Top, LayoutOrder = 2,
 		}, body)
 	end
-	local bar = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 8), Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = "@Stroke" }, card)
+	local bar = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 8), Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = "@Track" }, card)
 	local fill = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = "@" .. colorKey }, bar)
 
 	tw(card, 0.25, { Position = UDim2.new(0, 0, 0, 0) }, Enum.EasingStyle.Back)

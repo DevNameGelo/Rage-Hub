@@ -1,6 +1,6 @@
 --[[
 	Rage Hub  |  Roblox UI library
-	Modern, lightweight, mobile + PC.  165 built-in vector icons (no emoji, no asset ids).
+	Modern glass UI, lightweight, mobile + PC.  165 built-in vector icons (no emoji, no asset ids).
 
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/devnamegelo/Rage-Hub/main/RageHub.lua"))()
 
@@ -11,7 +11,6 @@ local RageHub = {
 	Version = "1.0.0",
 	Flags = {},
 	Options = {},
-	Themes = {},
 	Windows = {},
 	ReduceMotion = false,
 	Notifications = true,
@@ -83,36 +82,20 @@ function Maid:Clean()
 end
 local RootMaid = Maid.new()
 
---// themes --------------------------------------------------------------------
-local function theme(bg, panel, card, elev, stroke, text, sub, muted, a1, a2, light)
-	return {
-		Bg = bg, Panel = panel, Card = card, Elevated = elev, Stroke = stroke,
-		Text = text, SubText = sub, Muted = muted, Accent = a1, Accent2 = a2,
-		OnAccent = rgb(255, 255, 255),
-		Success = rgb(52, 211, 153), Warning = rgb(251, 191, 36), Danger = rgb(248, 113, 113),
-		Light = light or false,
-	}
-end
-
-RageHub.Themes.Rage = theme(rgb(18, 15, 30), rgb(12, 10, 21), rgb(26, 22, 44), rgb(37, 32, 62), rgb(58, 51, 92),
-	rgb(242, 240, 255), rgb(166, 160, 200), rgb(110, 104, 148), rgb(139, 92, 246), rgb(217, 70, 239))
-RageHub.Themes.Crimson = theme(rgb(20, 13, 15), rgb(14, 9, 11), rgb(32, 20, 24), rgb(46, 28, 34), rgb(78, 44, 54),
-	rgb(255, 241, 243), rgb(206, 156, 164), rgb(140, 100, 108), rgb(244, 63, 94), rgb(249, 115, 22))
-RageHub.Themes.Ocean = theme(rgb(12, 18, 30), rgb(8, 13, 23), rgb(18, 28, 46), rgb(26, 40, 64), rgb(40, 60, 94),
-	rgb(236, 245, 255), rgb(150, 176, 210), rgb(98, 122, 158), rgb(56, 189, 248), rgb(99, 102, 241))
-RageHub.Themes.Emerald = theme(rgb(11, 20, 17), rgb(7, 14, 12), rgb(18, 31, 27), rgb(26, 44, 38), rgb(40, 70, 60),
-	rgb(236, 253, 245), rgb(150, 200, 180), rgb(98, 140, 124), rgb(16, 185, 129), rgb(132, 204, 22))
-RageHub.Themes.Sakura = theme(rgb(24, 15, 22), rgb(17, 10, 16), rgb(36, 23, 34), rgb(52, 33, 49), rgb(84, 52, 78),
-	rgb(255, 240, 248), rgb(208, 160, 190), rgb(144, 104, 130), rgb(244, 114, 182), rgb(168, 85, 247))
-RageHub.Themes.Midnight = theme(rgb(14, 14, 16), rgb(9, 9, 11), rgb(24, 24, 28), rgb(36, 36, 42), rgb(58, 58, 68),
-	rgb(244, 244, 248), rgb(160, 160, 172), rgb(106, 106, 118), rgb(250, 250, 250), rgb(161, 161, 170))
-RageHub.Themes.Midnight.OnAccent = rgb(20, 20, 24)
-RageHub.Themes.Light = theme(rgb(244, 245, 250), rgb(233, 235, 244), rgb(255, 255, 255), rgb(238, 240, 248), rgb(214, 218, 232),
-	rgb(24, 24, 38), rgb(96, 100, 126), rgb(150, 154, 176), rgb(124, 58, 237), rgb(192, 38, 211), true)
-
-local Theme = {}
-for k, v in pairs(RageHub.Themes.Rage) do Theme[k] = v end
+--// theme: one clean glass style ------------------------------------------------
+local Theme = {
+	Bg = rgb(10, 13, 26),          -- window glass tint
+	Popup = rgb(16, 19, 36),       -- dropdowns / pickers / notifications
+	Card = rgb(255, 255, 255),     -- frosted layers (drawn with high transparency)
+	Elevated = rgb(255, 255, 255),
+	Stroke = rgb(255, 255, 255),
+	Track = rgb(70, 76, 112),
+	Text = rgb(244, 246, 255), SubText = rgb(178, 185, 216), Muted = rgb(122, 130, 166),
+	Accent = rgb(139, 112, 255), Accent2 = rgb(224, 92, 246), OnAccent = rgb(255, 255, 255),
+	Success = rgb(52, 211, 153), Warning = rgb(251, 191, 36), Danger = rgb(248, 113, 113),
+}
 RageHub.Theme = Theme
+local GLASS = { Window = 0.16, Content = 0.94, Card = 0.955, Elev = 0.9, Popup = 0.03, Stroke = 0.86 }
 
 local themed = setmetatable({}, { __mode = "k" })     -- inst -> { prop = themeKey }
 local themedIcons = setmetatable({}, { __mode = "k" }) -- icon -> themeKey

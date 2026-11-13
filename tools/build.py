@@ -2,7 +2,7 @@
 """Rebuild RageHub.lua from src/ (run tools/gen_icons.py first if you changed icons)."""
 import os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ORDER = ["00_head.lua", "icons.lua", "10_engine.lua", "20_window.lua", "30_elements.lua", "40_settings.lua"]
+ORDER = ["00_head.lua", "icons.lua", "10_engine.lua", "20_window.lua", "30_elements.lua", "40_core.lua", "45_dashboard.lua", "99_tail.lua"]
 out = []
 for name in ORDER:
     with open(os.path.join(ROOT, "src", name)) as f:

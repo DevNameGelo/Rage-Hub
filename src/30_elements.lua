@@ -31,7 +31,7 @@ local function makeRow(sec, cfg, o)
 			TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, LayoutOrder = 2,
 		}, tf)
 	end
-	row.MouseEnter:Connect(function() tw(row, 0.12, { BackgroundTransparency = 0.65 }) end)
+	row.MouseEnter:Connect(function() tw(row, 0.12, { BackgroundTransparency = 0.9 }) end)
 	row.MouseLeave:Connect(function() tw(row, 0.12, { BackgroundTransparency = 1 }) end)
 	return { Row = row, Inner = inner, Title = title, Desc = desc, est = o.est or 40 }
 end
@@ -56,12 +56,14 @@ local function register(el, cfg, sec, R)
 	local win = sec.Tab.Window
 	win.Elements[#win.Elements + 1] = el
 	win:_reg(el, cfg, sec)
+	if win._lateLoad then win:_applySaved(el) end
 	sec.Est = sec.Est + R.est
 	sec.Tab:_queueLayout()
 end
 
 local function changed(el, silent)
 	if el.Flag then RageHub.Flags[el.Flag] = el.Value end
+	if el.Save ~= false and el.Section then el.Section.Tab.Window:_markDirty() end
 	if not silent then fire(el.Callback, el.Value) end
 end
 
@@ -78,13 +80,13 @@ function Section:CreateToggle(cfg)
 	cfg = cfg or {}
 	local R = makeRow(self, cfg, { click = true, right = 44 })
 	local el = { Type = "Toggle", Value = cfg.Default == true }
-	local track = new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(38, 20), BackgroundColor3 = "@Stroke" }, R.Row)
+	local track = new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(38, 20), BackgroundColor3 = "@Track" }, R.Row)
 	corner(track, 10)
 	local knob = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 3, 0.5, 0), Size = UDim2.fromOffset(14, 14), BackgroundColor3 = Color3.new(1, 1, 1) }, track)
 	corner(knob, 7)
 	local function paint(t)
 		local on = el.Value
-		setKey(track, "BackgroundColor3", on and "Accent" or "Stroke", t)
+		setKey(track, "BackgroundColor3", on and "Accent" or "Track", t)
 		tw(knob, t, { Position = on and UDim2.new(1, -17, 0.5, 0) or UDim2.new(0, 3, 0.5, 0) })
 	end
 	function el:Set(v, silent)
@@ -111,11 +113,11 @@ function Section:CreateSlider(cfg)
 
 	local box = new("TextBox", {
 		AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(58, 22), BackgroundColor3 = "@Elevated",
-		BackgroundTransparency = 0, TextColor3 = "@Text", TextSize = 12, ClearTextOnFocus = false, Text = "",
+		BackgroundTransparency = GLASS.Elev, TextColor3 = "@Text", TextSize = 12, ClearTextOnFocus = false, Text = "",
 	}, R.Row)
 	corner(box, 6)
 	local hit = new("TextButton", { Name = "Hit", Size = UDim2.new(1, 0, 0, 22), LayoutOrder = 2 }, R.Inner)
-	local track = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.new(1, 0, 0, 6), BackgroundColor3 = "@Stroke" }, hit)
+	local track = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.new(1, 0, 0, 6), BackgroundColor3 = "@Track" }, hit)
 	corner(track, 3)
 	local fill = new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = Color3.new(1, 1, 1) }, track)
 	corner(fill, 3)
@@ -174,9 +176,9 @@ function Section:CreateDropdown(cfg)
 		el.Value = cfg.Default
 	end
 
-	local btn = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(120, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0 }, R.Row)
+	local btn = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(120, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev }, R.Row)
 	corner(btn, 7)
-	stroke(btn, "Stroke", 1, 0.5)
+	stroke(btn, "Stroke", 1, 0.88)
 	local txt = new("TextLabel", {
 		Position = UDim2.fromOffset(9, 0), Size = UDim2.new(1, -28, 1, 0), TextSize = 12, TextColor3 = "@Text",
 		TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
@@ -243,14 +245,14 @@ function Section:CreateDropdown(cfg)
 		filter()
 	end
 	local function build()
-		pop = new("Frame", { BackgroundColor3 = "@Card", ClipsDescendants = true })
+		pop = new("Frame", { BackgroundColor3 = "@Popup", BackgroundTransparency = GLASS.Popup, ClipsDescendants = true })
 		corner(pop, 10)
-		stroke(pop, "Stroke", 1, 0)
+		stroke(pop, "Stroke", 1, 0.8)
 		pad(pop, 6, 6, 6, 6)
 		local top = 0
 		if searchable then
 			searchBox = new("TextBox", {
-				Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0, PlaceholderText = "Search...",
+				Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev, PlaceholderText = "Search...",
 				PlaceholderColor3 = "@Muted", TextColor3 = "@Text", TextSize = 12, ClearTextOnFocus = false, Text = "",
 				TextXAlignment = Enum.TextXAlignment.Left,
 			}, pop)
@@ -261,7 +263,7 @@ function Section:CreateDropdown(cfg)
 		end
 		scroll = new("ScrollingFrame", {
 			Position = UDim2.fromOffset(0, top), Size = UDim2.new(1, 0, 1, -top), BackgroundTransparency = 1, ScrollBarThickness = 3,
-			ScrollBarImageColor3 = "@Stroke", CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			ScrollBarImageColor3 = "@Stroke", ScrollBarImageTransparency = 0.6, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		}, pop)
 		list(scroll, 2)
 		refreshItems()
@@ -305,10 +307,10 @@ function Section:CreateButton(cfg)
 	local el = { Type = "Button" }
 	local pill = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(0, 26), AutomaticSize = Enum.AutomaticSize.X,
-		BackgroundColor3 = "@Elevated", BackgroundTransparency = 0,
+		BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev,
 	}, R.Row)
 	corner(pill, 7)
-	stroke(pill, "Stroke", 1, 0.5)
+	stroke(pill, "Stroke", 1, 0.88)
 	pad(pill, 9, 0, 9, 0)
 	list(pill, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
 	local colorKey = cfg.Danger and "Danger" or "Accent"
@@ -321,8 +323,8 @@ function Section:CreateButton(cfg)
 	end
 	function el:Fire() fire(cfg.Callback) end
 	R.Row.Activated:Connect(function()
-		tw(pill, 0.08, { BackgroundTransparency = 0.5 })
-		task.delay(0.12, function() if pill.Parent then tw(pill, 0.15, { BackgroundTransparency = 0 }) end end)
+		tw(pill, 0.08, { BackgroundTransparency = 0.7 })
+		task.delay(0.12, function() if pill.Parent then tw(pill, 0.15, { BackgroundTransparency = GLASS.Elev }) end end)
 		fire(cfg.Callback)
 	end)
 	register(el, cfg, self, R)
@@ -336,12 +338,12 @@ function Section:CreateInput(cfg)
 	local el = { Type = "Input", Value = cfg.Default or "" }
 	local box = new("TextBox", {
 		AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(128, 26), BackgroundColor3 = "@Elevated",
-		BackgroundTransparency = 0, PlaceholderText = cfg.Placeholder or "Type here...", PlaceholderColor3 = "@Muted",
+		BackgroundTransparency = GLASS.Elev, PlaceholderText = cfg.Placeholder or "Type here...", PlaceholderColor3 = "@Muted",
 		TextColor3 = "@Text", TextSize = 12, ClearTextOnFocus = false, Text = tostring(el.Value), TextXAlignment = Enum.TextXAlignment.Left,
 		ClipsDescendants = true,
 	}, R.Row)
 	corner(box, 7)
-	stroke(box, "Stroke", 1, 0.5)
+	stroke(box, "Stroke", 1, 0.88)
 	pad(box, 8, 0, 8, 0)
 	function el:Set(v, silent)
 		self.Value = v
@@ -370,9 +372,9 @@ function Section:CreateKeybind(cfg)
 	local win = self.Tab.Window
 	local R = makeRow(self, cfg, { right = 90 })
 	local el = { Type = "Keybind", Value = cfg.Default }
-	local btn = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(84, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0 }, R.Row)
+	local btn = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(84, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev }, R.Row)
 	corner(btn, 7)
-	stroke(btn, "Stroke", 1, 0.5)
+	stroke(btn, "Stroke", 1, 0.88)
 	local lbl = new("TextLabel", { Size = UDim2.fromScale(1, 1), TextSize = 12, TextColor3 = "@Text" }, btn)
 	local function show()
 		lbl.Text = el.Value and (KEY_SHORT[el.Value.Name] or el.Value.Name) or "None"
@@ -385,6 +387,7 @@ function Section:CreateKeybind(cfg)
 	function el:Set(k, silent)
 		self.Value = k
 		if self.Flag then RageHub.Flags[self.Flag] = k end
+		if self.Save ~= false then win:_markDirty() end
 		show()
 		if not silent then fire(cfg.OnChanged, k) end
 	end
@@ -409,7 +412,7 @@ function Section:CreateColorPicker(cfg)
 	local el = { Type = "ColorPicker", Value = cfg.Default or Theme.Accent }
 	local sw = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(38, 22), BackgroundColor3 = el.Value, BackgroundTransparency = 0 }, R.Row)
 	corner(sw, 6)
-	stroke(sw, "Stroke", 1, 0.2)
+	stroke(sw, "Stroke", 1, 0.6)
 	local h, s, v = el.Value:ToHSV()
 	local pop, sv, svCur, hueCur, hex
 
@@ -425,9 +428,9 @@ function Section:CreateColorPicker(cfg)
 		changed(el, silent)
 	end
 	local function build()
-		pop = new("Frame", { BackgroundColor3 = "@Card" })
+		pop = new("Frame", { BackgroundColor3 = "@Popup", BackgroundTransparency = GLASS.Popup })
 		corner(pop, 10)
-		stroke(pop, "Stroke", 1, 0)
+		stroke(pop, "Stroke", 1, 0.8)
 		pad(pop, 8, 8, 8, 8)
 		sv = new("Frame", { Size = UDim2.new(1, 0, 0, 110), BackgroundColor3 = Color3.fromHSV(h, 1, 1) }, pop)
 		corner(sv, 6)
@@ -451,7 +454,7 @@ function Section:CreateColorPicker(cfg)
 		new("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 2 }, hueCur)
 
 		hex = new("TextBox", {
-			Position = UDim2.fromOffset(0, 142), Size = UDim2.new(1, 0, 0, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0,
+			Position = UDim2.fromOffset(0, 142), Size = UDim2.new(1, 0, 0, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev,
 			TextColor3 = "@Text", TextSize = 12, ClearTextOnFocus = false, Text = "",
 		}, pop)
 		corner(hex, 7)
@@ -525,7 +528,7 @@ end
 
 function Section:CreateParagraph(cfg)
 	cfg = cfg or {}
-	local f = new("Frame", { Name = "Paragraph", Size = UDim2.new(1, 0, 0, 40), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = "@Elevated", BackgroundTransparency = 0.45 }, self.Body)
+	local f = new("Frame", { Name = "Paragraph", Size = UDim2.new(1, 0, 0, 40), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = "@Elevated", BackgroundTransparency = 0.93 }, self.Body)
 	corner(f, 8)
 	pad(f, 10, 9, 10, 10)
 	list(f, 3)
@@ -541,7 +544,7 @@ end
 
 function Section:CreateDivider()
 	local f = new("Frame", { Name = "Divider", Size = UDim2.new(1, 0, 0, 9), BackgroundTransparency = 1 }, self.Body)
-	new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 8, 0.5, 0), Size = UDim2.new(1, -16, 0, 1), BackgroundColor3 = "@Stroke", BackgroundTransparency = 0.5 }, f)
+	new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 8, 0.5, 0), Size = UDim2.new(1, -16, 0, 1), BackgroundColor3 = "@Stroke", BackgroundTransparency = 0.9 }, f)
 	self.Est = self.Est + 10
 	return { Type = "Divider", Row = f, Destroy = function() f:Destroy() end }
 end

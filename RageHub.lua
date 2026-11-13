@@ -1,6 +1,6 @@
 --[[
 	Rage Hub  |  Roblox UI library
-	Modern, lightweight, mobile + PC.  165 built-in vector icons (no emoji, no asset ids).
+	Modern glass UI, lightweight, mobile + PC.  165 built-in vector icons (no emoji, no asset ids).
 
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/devnamegelo/Rage-Hub/main/RageHub.lua"))()
 
@@ -11,7 +11,6 @@ local RageHub = {
 	Version = "1.0.0",
 	Flags = {},
 	Options = {},
-	Themes = {},
 	Windows = {},
 	ReduceMotion = false,
 	Notifications = true,
@@ -83,36 +82,20 @@ function Maid:Clean()
 end
 local RootMaid = Maid.new()
 
---// themes --------------------------------------------------------------------
-local function theme(bg, panel, card, elev, stroke, text, sub, muted, a1, a2, light)
-	return {
-		Bg = bg, Panel = panel, Card = card, Elevated = elev, Stroke = stroke,
-		Text = text, SubText = sub, Muted = muted, Accent = a1, Accent2 = a2,
-		OnAccent = rgb(255, 255, 255),
-		Success = rgb(52, 211, 153), Warning = rgb(251, 191, 36), Danger = rgb(248, 113, 113),
-		Light = light or false,
-	}
-end
-
-RageHub.Themes.Rage = theme(rgb(18, 15, 30), rgb(12, 10, 21), rgb(26, 22, 44), rgb(37, 32, 62), rgb(58, 51, 92),
-	rgb(242, 240, 255), rgb(166, 160, 200), rgb(110, 104, 148), rgb(139, 92, 246), rgb(217, 70, 239))
-RageHub.Themes.Crimson = theme(rgb(20, 13, 15), rgb(14, 9, 11), rgb(32, 20, 24), rgb(46, 28, 34), rgb(78, 44, 54),
-	rgb(255, 241, 243), rgb(206, 156, 164), rgb(140, 100, 108), rgb(244, 63, 94), rgb(249, 115, 22))
-RageHub.Themes.Ocean = theme(rgb(12, 18, 30), rgb(8, 13, 23), rgb(18, 28, 46), rgb(26, 40, 64), rgb(40, 60, 94),
-	rgb(236, 245, 255), rgb(150, 176, 210), rgb(98, 122, 158), rgb(56, 189, 248), rgb(99, 102, 241))
-RageHub.Themes.Emerald = theme(rgb(11, 20, 17), rgb(7, 14, 12), rgb(18, 31, 27), rgb(26, 44, 38), rgb(40, 70, 60),
-	rgb(236, 253, 245), rgb(150, 200, 180), rgb(98, 140, 124), rgb(16, 185, 129), rgb(132, 204, 22))
-RageHub.Themes.Sakura = theme(rgb(24, 15, 22), rgb(17, 10, 16), rgb(36, 23, 34), rgb(52, 33, 49), rgb(84, 52, 78),
-	rgb(255, 240, 248), rgb(208, 160, 190), rgb(144, 104, 130), rgb(244, 114, 182), rgb(168, 85, 247))
-RageHub.Themes.Midnight = theme(rgb(14, 14, 16), rgb(9, 9, 11), rgb(24, 24, 28), rgb(36, 36, 42), rgb(58, 58, 68),
-	rgb(244, 244, 248), rgb(160, 160, 172), rgb(106, 106, 118), rgb(250, 250, 250), rgb(161, 161, 170))
-RageHub.Themes.Midnight.OnAccent = rgb(20, 20, 24)
-RageHub.Themes.Light = theme(rgb(244, 245, 250), rgb(233, 235, 244), rgb(255, 255, 255), rgb(238, 240, 248), rgb(214, 218, 232),
-	rgb(24, 24, 38), rgb(96, 100, 126), rgb(150, 154, 176), rgb(124, 58, 237), rgb(192, 38, 211), true)
-
-local Theme = {}
-for k, v in pairs(RageHub.Themes.Rage) do Theme[k] = v end
+--// theme: one clean glass style ------------------------------------------------
+local Theme = {
+	Bg = rgb(10, 13, 26),          -- window glass tint
+	Popup = rgb(16, 19, 36),       -- dropdowns / pickers / notifications
+	Card = rgb(255, 255, 255),     -- frosted layers (drawn with high transparency)
+	Elevated = rgb(255, 255, 255),
+	Stroke = rgb(255, 255, 255),
+	Track = rgb(70, 76, 112),
+	Text = rgb(244, 246, 255), SubText = rgb(178, 185, 216), Muted = rgb(122, 130, 166),
+	Accent = rgb(139, 112, 255), Accent2 = rgb(224, 92, 246), OnAccent = rgb(255, 255, 255),
+	Success = rgb(52, 211, 153), Warning = rgb(251, 191, 36), Danger = rgb(248, 113, 113),
+}
 RageHub.Theme = Theme
+local GLASS = { Window = 0.16, Content = 0.94, Card = 0.955, Elev = 0.9, Popup = 0.03, Stroke = 0.86 }
 
 local themed = setmetatable({}, { __mode = "k" })     -- inst -> { prop = themeKey }
 local themedIcons = setmetatable({}, { __mode = "k" }) -- icon -> themeKey
@@ -634,30 +617,6 @@ function RageHub:GetIcons()
 end
 function RageHub:HasIcon(name) return (ICONS[ICON_ALIASES[name] or name]) ~= nil end
 
---// theme switching ---------------------------------------------------------------
-function RageHub:AddTheme(name, t)
-	local base = RageHub.Themes.Rage
-	local out = {}
-	for k, v in pairs(base) do out[k] = (t and t[k]) or v end
-	RageHub.Themes[name] = out
-end
-
-function RageHub:SetTheme(name)
-	local t = RageHub.Themes[name]
-	if not t then return end
-	RageHub.CurrentTheme = name
-	for k, v in pairs(t) do Theme[k] = v end
-	for inst, map in pairs(themed) do
-		for prop, key in pairs(map) do pcall(function() inst[prop] = Theme[key] end) end
-	end
-	for ic, key in pairs(themedIcons) do ic:SetColor(Theme[key]) end
-	for g in pairs(themedGrad) do g.Color = ColorSequence.new(Theme.Accent, Theme.Accent2) end
-	for _, w in ipairs(RageHub.Windows) do
-		if w._onTheme then w:_onTheme() end
-	end
-end
-RageHub.CurrentTheme = "Rage"
-
 --// gui root + notifications --------------------------------------------------
 local function ensureGui()
 	if RageHub.Gui and RageHub.Gui.Parent then return RageHub.Gui end
@@ -690,8 +649,11 @@ local function ensureNotes()
 end
 
 function RageHub:Notify(cfg)
-	if not RageHub.Notifications then return end
 	cfg = type(cfg) == "table" and cfg or { Content = tostring(cfg) }
+	for _, w in ipairs(RageHub.Windows) do
+		pcall(function() w:Log((cfg.Title and (cfg.Title .. ": ") or "") .. (cfg.Content or ""), cfg.Type or "info") end)
+	end
+	if not RageHub.Notifications then return end
 	local holder = ensureNotes()
 	local kind = cfg.Type or "info"
 	local colorKey = NOTE_COLORS[kind] or "Accent"
@@ -707,10 +669,10 @@ function RageHub:Notify(cfg)
 	active[#active + 1] = slot
 	local card = new("Frame", {
 		Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(1, 40, 0, 0),
-		BackgroundColor3 = "@Card",
+		BackgroundColor3 = "@Popup", BackgroundTransparency = GLASS.Popup + 0.04,
 	}, slot)
-	corner(card, 10)
-	stroke(card, "Stroke", 1, 0.2)
+	corner(card, 12)
+	stroke(card, "Stroke", 1, 0.8)
 	pad(card, 12, 10, 12, 12)
 	local ic = makeIcon(card, cfg.Icon or NOTE_ICONS[kind], 18, colorKey)
 	ic.Instance.Position = UDim2.fromOffset(0, 1)
@@ -727,7 +689,7 @@ function RageHub:Notify(cfg)
 			TextYAlignment = Enum.TextYAlignment.Top, LayoutOrder = 2,
 		}, body)
 	end
-	local bar = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 8), Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = "@Stroke" }, card)
+	local bar = new("Frame", { AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 8), Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = "@Track" }, card)
 	local fill = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = "@" .. colorKey }, bar)
 
 	tw(card, 0.25, { Position = UDim2.new(0, 0, 0, 0) }, Enum.EasingStyle.Back)
@@ -750,12 +712,27 @@ Tab.__index = Tab
 Section.__index = Section
 
 local SB_OPEN, SB_SHUT = 176, 62
+local FLOAT = 46
 local ELEMENTS = { "CreateToggle", "CreateSlider", "CreateDropdown", "CreateButton", "CreateInput",
 	"CreateKeybind", "CreateColorPicker", "CreateLabel", "CreateParagraph", "CreateDivider" }
 
-function Window:_a(inst, factor)
-	self._alpha[#self._alpha + 1] = { inst, factor or 1 }
-	if self.Alpha > 0 then inst.BackgroundTransparency = self.Alpha * (factor or 1) end
+local function viewport()
+	local g = RageHub.Gui
+	local v = g and g.AbsoluteSize or Vector2.new(0, 0)
+	if v.X < 100 or v.Y < 100 then
+		local cam = workspace.CurrentCamera
+		v = cam and cam.ViewportSize or Vector2.new(1280, 720)
+	end
+	return v
+end
+
+local function kp(t, v) return NumberSequenceKeypoint.new(t, v) end
+
+-- base = the glass transparency of this layer. The "Transparency" setting fades all layers further.
+function Window:_a(inst, base)
+	base = base or 0
+	self._alpha[#self._alpha + 1] = { inst, base }
+	inst.BackgroundTransparency = 1 - (1 - base) * (1 - self.Alpha)
 end
 
 function Window:SetTransparency(t)
@@ -763,7 +740,7 @@ function Window:SetTransparency(t)
 	local live = {}
 	for _, e in ipairs(self._alpha) do
 		if e[1].Parent then
-			e[1].BackgroundTransparency = self.Alpha * e[2]
+			e[1].BackgroundTransparency = 1 - (1 - e[2]) * (1 - self.Alpha)
 			live[#live + 1] = e
 		end
 	end
@@ -771,16 +748,32 @@ function Window:SetTransparency(t)
 end
 
 function Window:_applyScale()
-	local vp = RageHub.Gui.AbsoluteSize
+	local vp = viewport()
 	local w, h = self.Main.Size.X.Offset, self.Main.Size.Y.Offset
 	local auto = clamp(math.min(1, (vp.X - 20) / w, (vp.Y - 20) / h), 0.5, 1)
 	self._target = auto * self.UserScale
 	self.UIScale.Scale = self._target
 end
 
+-- keep the whole window on screen (acts like a wall at every edge)
+function Window:_setCenter(x, y)
+	local vp = viewport()
+	local sz = self.Main.AbsoluteSize
+	local hx, hy = sz.X / 2, sz.Y / 2
+	x = clamp(x, math.min(hx, vp.X - hx), math.max(hx, vp.X - hx))
+	y = clamp(y, math.min(hy, vp.Y - hy), math.max(hy, vp.Y - hy))
+	self.Main.Position = UDim2.fromOffset(x, y)
+end
+
+function Window:_clamp()
+	local ap, sz = self.Main.AbsolutePosition, self.Main.AbsoluteSize
+	self:_setCenter(ap.X + sz.X / 2, ap.Y + sz.Y / 2)
+end
+
 function Window:SetScale(s)
 	self.UserScale = clamp(s or 1, 0.6, 1.5)
 	self:_applyScale()
+	task.defer(function() if self.Main.Parent then self:_clamp() end end)
 end
 
 function Window:SetToggleKey(k) self.ToggleKey = k end
@@ -862,8 +855,18 @@ function Window:_hidePopup()
 	if p.onClose then p.onClose() end
 end
 
+--// logs (shown on the Dashboard, filled by notifications and your own Window:Log calls)
+function Window:Log(text, kind)
+	self._logBuf[#self._logBuf + 1] = { text = tostring(text), kind = kind or "info", t = os.date("%H:%M:%S") }
+	if #self._logBuf > 120 then table.remove(self._logBuf, 1) end
+	if self.Dashboard and self.Dashboard.Activity then
+		self.Dashboard.Activity:Add(text, kind)
+	end
+end
+
 --// search ----------------------------------------------------------------------
 function Window:_reg(el, cfg, sec)
+	self._lastCreate = os.clock()
 	if not cfg.Name then return end
 	self.Search[#self.Search + 1] = {
 		name = cfg.Name, key = (cfg.Name .. " " .. (cfg.Description or "")):lower(),
@@ -888,8 +891,9 @@ function Window:_doSearch(q)
 		if e.key:find(q, 1, true) then
 			n = n + 1
 			if n > 40 then break end
-			local b = new("TextButton", { Size = UDim2.new(1, 0, 0, 42), BackgroundColor3 = "@Card", BackgroundTransparency = 0, LayoutOrder = n }, sp)
+			local b = new("TextButton", { Size = UDim2.new(1, 0, 0, 42), BackgroundColor3 = "@Card", BackgroundTransparency = GLASS.Card, LayoutOrder = n }, sp)
 			corner(b, 8)
+			stroke(b, "Stroke", 1, 0.92)
 			new("TextLabel", { Text = e.name, Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 16),
 				TextColor3 = "@Text", TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, b)
 			new("TextLabel", { Text = e.tab.Name .. "  /  " .. (e.sec.Name or "General"), Font = Enum.Font.Gotham, TextSize = 11,
@@ -915,7 +919,7 @@ function Window:_goto(e)
 		local y = (e.row.AbsolutePosition.Y - page.AbsolutePosition.Y) / s + page.CanvasPosition.Y - 8
 		page.CanvasPosition = Vector2.new(0, math.max(0, y))
 		if e.row:IsA("GuiObject") then
-			tw(e.row, 0.12, { BackgroundTransparency = 0.35 })
+			tw(e.row, 0.12, { BackgroundTransparency = 0.8 })
 			task.delay(0.7, function() if e.row.Parent then tw(e.row, 0.3, { BackgroundTransparency = 1 }) end end)
 		end
 	end)
@@ -1017,7 +1021,7 @@ function Window:CreateTab(name, icon, opts)
 
 	local page = new("ScrollingFrame", {
 		Name = name, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false,
-		ScrollBarThickness = 3, ScrollBarImageColor3 = "@Stroke", CanvasSize = UDim2.new(),
+		ScrollBarThickness = 3, ScrollBarImageColor3 = "@Stroke", ScrollBarImageTransparency = 0.6, CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y,
 		ElasticBehavior = Enum.ElasticBehavior.Never, VerticalScrollBarInset = Enum.ScrollBarInset.None,
 	}, self.Pages)
@@ -1039,14 +1043,15 @@ function Tab:CreateSection(name, icon, opts)
 	if type(icon) == "table" then opts = icon; icon = nil end
 	opts = opts or {}
 	local win = self.Window
+	win._lastCreate = os.clock()
 	local sec = setmetatable({ Tab = self, Name = name, Est = 44, Side = opts.Side, Collapsed = false }, Section)
 	local frame = new("Frame", {
 		Name = name or "Section", Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = "@Card", LayoutOrder = #self.Sections + 1,
 	}, self.Col1)
-	corner(frame, 10)
-	stroke(frame, "Stroke", 1, 0.45)
-	win:_a(frame, 0.8)
+	corner(frame, 12)
+	stroke(frame, "Stroke", 1, 0.9)
+	win:_a(frame, GLASS.Card)
 	pad(frame, 6, 6, 6, 6)
 	list(frame, 2)
 	sec.Frame = frame
@@ -1078,11 +1083,22 @@ function Tab:CreateSection(name, icon, opts)
 	return sec
 end
 
+function Tab:RemoveSection(sec)
+	for i, s in ipairs(self.Sections) do
+		if s == sec then table.remove(self.Sections, i) break end
+	end
+	if sec.Frame then sec.Frame:Destroy() end
+	if self._def == sec then self._def = nil end
+	self:_queueLayout()
+end
+
 function Section:SetCollapsed(c)
 	self.Collapsed = c
 	self.Body.Visible = not c
 	if self.Chevron then tw(self.Chevron, 0.15, { Rotation = c and -90 or 0 }) end
 end
+
+function Section:Remove() self.Tab:RemoveSection(self) end
 
 function Tab:_default()
 	if not self._def then self._def = self:CreateSection(nil) end
@@ -1110,26 +1126,33 @@ function RageHub:CreateWindow(cfg)
 	self.ToggleKey = cfg.ToggleKey or Enum.KeyCode.RightControl
 	self.UserScale = 1
 	self.Alpha = 0
-	self._alpha, self._sbText, self._onDestroy = {}, {}, {}
+	self._alpha, self._sbText, self._onDestroy, self._logBuf = {}, {}, {}, {}
 	self._order = 0
+	self._lastCreate = os.clock()
 	self.Visible = true
-	self.Collapsed = IsMobile
-	self.AutoExecuteScript = cfg.AutoExecuteScript
-	if cfg.Theme and RageHub.Themes[cfg.Theme] then RageHub:SetTheme(cfg.Theme) end
+	self.Collapsed = cfg.CompactSidebar == true
+	self.AutoExecuteScript = nil
+	if cfg.AutoExecuteURL or cfg.AutoExecuteScript then self:SetAutoExecute(cfg.AutoExecuteURL or cfg.AutoExecuteScript) end
 
 	local size = cfg.Size or Vector2.new(660, 400)
 	local main = new("Frame", {
 		Name = "Window", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(size.X, size.Y), BackgroundColor3 = "@Panel",
+		Size = UDim2.fromOffset(size.X, size.Y), BackgroundColor3 = "@Bg",
 	}, Gui)
 	self.Main = main
 	self.UIScale = new("UIScale", {}, main)
-	corner(main, 14)
-	stroke(main, "Stroke", 1, 0.2)
-	self:_a(main, 1)
+	corner(main, 16)
+	self:_a(main, GLASS.Window)
+	-- glass edge: bright top-left, soft bottom-right
+	local edge = new("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 1.2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, main)
+	new("UIGradient", { Rotation = 45, Transparency = NumberSequence.new({ kp(0, 0.4), kp(0.5, 0.9), kp(1, 0.68) }) }, edge)
+	-- glass sheen
+	local sheen = new("Frame", { Name = "Sheen", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(1, 1, 1) }, main)
+	corner(sheen, 16)
+	new("UIGradient", { Rotation = 35, Transparency = NumberSequence.new({ kp(0, 0.9), kp(0.45, 0.97), kp(1, 1) }) }, sheen)
 
 	--// sidebar
-	local sidebar = new("Frame", { Name = "Sidebar", BackgroundTransparency = 1, Size = UDim2.new(0, SB_OPEN, 1, 0) }, main)
+	local sidebar = new("Frame", { Name = "Sidebar", BackgroundTransparency = 1, Size = UDim2.new(0, self.Collapsed and SB_SHUT or SB_OPEN, 1, 0) }, main)
 	self.Sidebar = sidebar
 	local brand = new("TextButton", { Name = "Brand", Size = UDim2.new(1, 0, 0, 58) }, sidebar)
 	local logo = makeLogo(brand, 30)
@@ -1146,8 +1169,9 @@ function RageHub:CreateWindow(cfg)
 	self._sbText[#self._sbText + 1] = self._tTitle
 	self._sbText[#self._sbText + 1] = self._tSub
 
-	local sb = new("Frame", { Name = "Search", Position = UDim2.fromOffset(10, 60), Size = UDim2.new(1, -20, 0, 30), BackgroundColor3 = "@Elevated" }, sidebar)
-	corner(sb, 8)
+	local sb = new("Frame", { Name = "Search", Position = UDim2.fromOffset(10, 60), Size = UDim2.new(1, -20, 0, 30), BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev }, sidebar)
+	corner(sb, 9)
+	stroke(sb, "Stroke", 1, 0.92)
 	local sIc = makeIcon(sb, "search", 14, "Muted")
 	sIc.Instance.Position = UDim2.fromOffset(9, 8)
 	self.SearchBox = new("TextBox", {
@@ -1166,7 +1190,7 @@ function RageHub:CreateWindow(cfg)
 
 	local foot = new("Frame", { Name = "Footer", AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 54), BackgroundTransparency = 1 }, sidebar)
 	local av = new("ImageLabel", {
-		Position = UDim2.fromOffset(16, 12), Size = UDim2.fromOffset(30, 30), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0,
+		Position = UDim2.fromOffset(16, 12), Size = UDim2.fromOffset(30, 30), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0.85,
 		Image = ("rbxthumb://type=AvatarHeadShot&id=%d&w=100&h=100"):format(LocalPlayer.UserId),
 	}, foot)
 	corner(av, 15)
@@ -1181,12 +1205,14 @@ function RageHub:CreateWindow(cfg)
 	self._sbText[#self._sbText + 1] = fn
 	self._sbText[#self._sbText + 1] = fu
 
-	--// content
+	--// content (frosted panel)
+	local sw = self.Collapsed and SB_SHUT or SB_OPEN
 	local content = new("Frame", {
-		Name = "Content", Position = UDim2.new(0, SB_OPEN, 0, 8), Size = UDim2.new(1, -SB_OPEN - 8, 1, -16), BackgroundColor3 = "@Bg",
+		Name = "Content", Position = UDim2.new(0, sw, 0, 8), Size = UDim2.new(1, -sw - 8, 1, -16), BackgroundColor3 = "@Card",
 	}, main)
-	corner(content, 10)
-	self:_a(content, 1)
+	corner(content, 12)
+	stroke(content, "Stroke", 1, GLASS.Stroke)
+	self:_a(content, GLASS.Content)
 	self.Content = content
 
 	local header = new("Frame", { Name = "Header", Size = UDim2.new(1, 0, 0, 46), BackgroundTransparency = 1 }, content)
@@ -1195,7 +1221,7 @@ function RageHub:CreateWindow(cfg)
 		Text = "", Font = Enum.Font.GothamBold, TextSize = 17, TextColor3 = "@Text", Position = UDim2.fromOffset(16, 0),
 		Size = UDim2.new(1, -130, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 	}, header)
-	new("Frame", { Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = "@Stroke", BackgroundTransparency = 0.5 }, header)
+	new("Frame", { Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = "@Stroke", BackgroundTransparency = 0.92 }, header)
 
 	local function hbtn(iconName, x, cb)
 		local b = new("TextButton", {
@@ -1206,34 +1232,36 @@ function RageHub:CreateWindow(cfg)
 		local ic = makeIcon(b, iconName, 16, "SubText")
 		ic.Instance.AnchorPoint = Vector2.new(0.5, 0.5)
 		ic.Instance.Position = UDim2.fromScale(0.5, 0.5)
-		b.MouseEnter:Connect(function() tw(b, 0.1, { BackgroundTransparency = 0.3 }) end)
+		b.MouseEnter:Connect(function() tw(b, 0.1, { BackgroundTransparency = 0.85 }) end)
 		b.MouseLeave:Connect(function() tw(b, 0.1, { BackgroundTransparency = 1 }) end)
 		b.Activated:Connect(cb)
 		return ic
 	end
 	hbtn("x", 10, function() self:SetVisible(false) end)
 	self._collapseIcon = hbtn("chevron-left", 46, function() self:SetCollapsed(not self.Collapsed) end)
-	self._collapseIcon.Instance.Rotation = 0
+	self._collapseIcon.Instance.Rotation = self.Collapsed and 180 or 0
 
 	self.Pages = new("Frame", { Name = "Pages", Position = UDim2.fromOffset(0, 47), Size = UDim2.new(1, 0, 1, -47), BackgroundTransparency = 1, ClipsDescendants = true }, content)
 	pad(self.Pages, 10, 10, 4, 0)
 	self.SearchPage = new("ScrollingFrame", {
 		Name = "SearchResults", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ScrollBarThickness = 3,
-		ScrollBarImageColor3 = "@Stroke", CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarImageColor3 = "@Stroke", ScrollBarImageTransparency = 0.6, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
 	}, self.Pages)
 	pad(self.SearchPage, 0, 0, 8, 10)
 	list(self.SearchPage, 6)
 
 	self.Overlay = new("Frame", { Name = "Overlay", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 50 }, main)
 
-	--// dragging + resizing
+	--// dragging (window can never leave the screen) + resizing
 	local function draggable(handle)
 		handle.InputBegan:Connect(function(i)
 			if not isPointer(i) then return end
-			local start, sp = i.Position, main.Position
+			local start = i.Position
+			local ap, sz = main.AbsolutePosition, main.AbsoluteSize
+			local cx, cy = ap.X + sz.X / 2, ap.Y + sz.Y / 2
 			trackInput(i, function(m)
 				local d = m.Position - start
-				main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
+				self:_setCenter(cx + d.X, cy + d.Y)
 			end)
 		end)
 	end
@@ -1252,13 +1280,61 @@ function RageHub:CreateWindow(cfg)
 			local s = self.UIScale.Scale
 			main.Size = UDim2.fromOffset(clamp(w0 + (m.Position.X - start.X) / s, 470, 1100), clamp(h0 + (m.Position.Y - start.Y) / s, 290, 800))
 		end, function()
+			self:_clamp()
 			if self.Active then self.Active:_layout() end
 		end)
 	end)
 
-	--// scale
+	--// floating toggle button: a wall on every edge, it can never leave the screen
+	local showFloat = cfg.FloatingButton
+	if showFloat == nil then showFloat = IsMobile end
+	local fb = new("TextButton", {
+		Name = "RageFloat", Size = UDim2.fromOffset(FLOAT, FLOAT), BackgroundColor3 = Color3.new(1, 1, 1), Visible = showFloat,
+	}, Gui)
+	local function floatPos(x, y)
+		local vp = viewport()
+		return clamp(x, 6, math.max(6, vp.X - FLOAT - 6)), clamp(y, 6, math.max(6, vp.Y - FLOAT - 6))
+	end
+	do
+		local x, y = floatPos(14, viewport().Y / 2 - FLOAT / 2)
+		fb.Position = UDim2.fromOffset(x, y)
+	end
+	corner(fb, 14)
+	accentGradient(fb, 45)
+	new("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.7, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, fb)
+	local fbi = makeIcon(fb, "rage", 28, Color3.new(1, 1, 1))
+	fbi.Instance.AnchorPoint = Vector2.new(0.5, 0.5)
+	fbi.Instance.Position = UDim2.fromScale(0.5, 0.5)
+	local moved = false
+	fb.InputBegan:Connect(function(i)
+		if not isPointer(i) then return end
+		moved = false
+		local start, sp = i.Position, fb.AbsolutePosition
+		trackInput(i, function(m)
+			local d = m.Position - start
+			if d.Magnitude > 6 then moved = true end
+			if moved then
+				local x, y = floatPos(sp.X + d.X, sp.Y + d.Y)
+				fb.Position = UDim2.fromOffset(x, y)
+			end
+		end)
+	end)
+	fb.Activated:Connect(function() if not moved then self:Toggle() end end)
+	self.Float = fb
+	function self:SetFloatingButton(v)
+		fb.Visible = v and true or false
+		local x, y = floatPos(fb.AbsolutePosition.X, fb.AbsolutePosition.Y)
+		fb.Position = UDim2.fromOffset(x, y)
+	end
+
+	--// scale + keep everything on screen when the viewport changes
 	self:_applyScale()
-	self.Maid:Add(Gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() self:_applyScale() end))
+	self.Maid:Add(Gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		self:_applyScale()
+		local x, y = floatPos(fb.AbsolutePosition.X, fb.AbsolutePosition.Y)
+		fb.Position = UDim2.fromOffset(x, y)
+		self:_clamp()
+	end))
 	self:SetCollapsed(self.Collapsed, true)
 
 	--// search box
@@ -1267,34 +1343,6 @@ function RageHub:CreateWindow(cfg)
 		local id, q = self._sq, self.SearchBox.Text
 		task.delay(0.15, function() if id == self._sq then self:_doSearch(q) end end)
 	end)
-
-	--// floating toggle button (always handy on mobile)
-	local showFloat = cfg.FloatingButton
-	if showFloat == nil then showFloat = IsMobile end
-	local fb = new("TextButton", {
-		Name = "RageFloat", Size = UDim2.fromOffset(46, 46), Position = UDim2.new(0, 14, 0.5, -23),
-		BackgroundColor3 = Color3.new(1, 1, 1), Visible = showFloat,
-	}, Gui)
-	corner(fb, 14)
-	accentGradient(fb, 45)
-	new("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.75, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, fb)
-	local fbi = makeIcon(fb, "rage", 28, Color3.new(1, 1, 1))
-	fbi.Instance.AnchorPoint = Vector2.new(0.5, 0.5)
-	fbi.Instance.Position = UDim2.fromScale(0.5, 0.5)
-	local moved = false
-	fb.InputBegan:Connect(function(i)
-		if not isPointer(i) then return end
-		moved = false
-		local start, sp = i.Position, fb.Position
-		trackInput(i, function(m)
-			local d = m.Position - start
-			if d.Magnitude > 6 then moved = true end
-			if moved then fb.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y) end
-		end)
-	end)
-	fb.Activated:Connect(function() if not moved then self:Toggle() end end)
-	self.Float = fb
-	function self:SetFloatingButton(v) fb.Visible = v and true or false end
 
 	--// keyboard: toggle key, keybind elements, key capture
 	self.Maid:Add(UIS.InputBegan:Connect(function(i, gp)
@@ -1324,6 +1372,7 @@ function RageHub:CreateWindow(cfg)
 	end
 
 	RageHub.Windows[#RageHub.Windows + 1] = self
+	self:_initCore(cfg)
 	if cfg.StartHidden then self.Visible = true; self:SetVisible(false) end
 	return self
 end
@@ -1370,7 +1419,7 @@ local function makeRow(sec, cfg, o)
 			TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, LayoutOrder = 2,
 		}, tf)
 	end
-	row.MouseEnter:Connect(function() tw(row, 0.12, { BackgroundTransparency = 0.65 }) end)
+	row.MouseEnter:Connect(function() tw(row, 0.12, { BackgroundTransparency = 0.9 }) end)
 	row.MouseLeave:Connect(function() tw(row, 0.12, { BackgroundTransparency = 1 }) end)
 	return { Row = row, Inner = inner, Title = title, Desc = desc, est = o.est or 40 }
 end
@@ -1395,12 +1444,14 @@ local function register(el, cfg, sec, R)
 	local win = sec.Tab.Window
 	win.Elements[#win.Elements + 1] = el
 	win:_reg(el, cfg, sec)
+	if win._lateLoad then win:_applySaved(el) end
 	sec.Est = sec.Est + R.est
 	sec.Tab:_queueLayout()
 end
 
 local function changed(el, silent)
 	if el.Flag then RageHub.Flags[el.Flag] = el.Value end
+	if el.Save ~= false and el.Section then el.Section.Tab.Window:_markDirty() end
 	if not silent then fire(el.Callback, el.Value) end
 end
 
@@ -1417,13 +1468,13 @@ function Section:CreateToggle(cfg)
 	cfg = cfg or {}
 	local R = makeRow(self, cfg, { click = true, right = 44 })
 	local el = { Type = "Toggle", Value = cfg.Default == true }
-	local track = new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(38, 20), BackgroundColor3 = "@Stroke" }, R.Row)
+	local track = new("Frame", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(38, 20), BackgroundColor3 = "@Track" }, R.Row)
 	corner(track, 10)
 	local knob = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 3, 0.5, 0), Size = UDim2.fromOffset(14, 14), BackgroundColor3 = Color3.new(1, 1, 1) }, track)
 	corner(knob, 7)
 	local function paint(t)
 		local on = el.Value
-		setKey(track, "BackgroundColor3", on and "Accent" or "Stroke", t)
+		setKey(track, "BackgroundColor3", on and "Accent" or "Track", t)
 		tw(knob, t, { Position = on and UDim2.new(1, -17, 0.5, 0) or UDim2.new(0, 3, 0.5, 0) })
 	end
 	function el:Set(v, silent)
@@ -1450,11 +1501,11 @@ function Section:CreateSlider(cfg)
 
 	local box = new("TextBox", {
 		AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(58, 22), BackgroundColor3 = "@Elevated",
-		BackgroundTransparency = 0, TextColor3 = "@Text", TextSize = 12, ClearTextOnFocus = false, Text = "",
+		BackgroundTransparency = GLASS.Elev, TextColor3 = "@Text", TextSize = 12, ClearTextOnFocus = false, Text = "",
 	}, R.Row)
 	corner(box, 6)
 	local hit = new("TextButton", { Name = "Hit", Size = UDim2.new(1, 0, 0, 22), LayoutOrder = 2 }, R.Inner)
-	local track = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.new(1, 0, 0, 6), BackgroundColor3 = "@Stroke" }, hit)
+	local track = new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.new(1, 0, 0, 6), BackgroundColor3 = "@Track" }, hit)
 	corner(track, 3)
 	local fill = new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = Color3.new(1, 1, 1) }, track)
 	corner(fill, 3)
@@ -1513,9 +1564,9 @@ function Section:CreateDropdown(cfg)
 		el.Value = cfg.Default
 	end
 
-	local btn = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(120, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0 }, R.Row)
+	local btn = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(120, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev }, R.Row)
 	corner(btn, 7)
-	stroke(btn, "Stroke", 1, 0.5)
+	stroke(btn, "Stroke", 1, 0.88)
 	local txt = new("TextLabel", {
 		Position = UDim2.fromOffset(9, 0), Size = UDim2.new(1, -28, 1, 0), TextSize = 12, TextColor3 = "@Text",
 		TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
@@ -1582,14 +1633,14 @@ function Section:CreateDropdown(cfg)
 		filter()
 	end
 	local function build()
-		pop = new("Frame", { BackgroundColor3 = "@Card", ClipsDescendants = true })
+		pop = new("Frame", { BackgroundColor3 = "@Popup", BackgroundTransparency = GLASS.Popup, ClipsDescendants = true })
 		corner(pop, 10)
-		stroke(pop, "Stroke", 1, 0)
+		stroke(pop, "Stroke", 1, 0.8)
 		pad(pop, 6, 6, 6, 6)
 		local top = 0
 		if searchable then
 			searchBox = new("TextBox", {
-				Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0, PlaceholderText = "Search...",
+				Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev, PlaceholderText = "Search...",
 				PlaceholderColor3 = "@Muted", TextColor3 = "@Text", TextSize = 12, ClearTextOnFocus = false, Text = "",
 				TextXAlignment = Enum.TextXAlignment.Left,
 			}, pop)
@@ -1600,7 +1651,7 @@ function Section:CreateDropdown(cfg)
 		end
 		scroll = new("ScrollingFrame", {
 			Position = UDim2.fromOffset(0, top), Size = UDim2.new(1, 0, 1, -top), BackgroundTransparency = 1, ScrollBarThickness = 3,
-			ScrollBarImageColor3 = "@Stroke", CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+			ScrollBarImageColor3 = "@Stroke", ScrollBarImageTransparency = 0.6, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		}, pop)
 		list(scroll, 2)
 		refreshItems()
@@ -1644,10 +1695,10 @@ function Section:CreateButton(cfg)
 	local el = { Type = "Button" }
 	local pill = new("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(0, 26), AutomaticSize = Enum.AutomaticSize.X,
-		BackgroundColor3 = "@Elevated", BackgroundTransparency = 0,
+		BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev,
 	}, R.Row)
 	corner(pill, 7)
-	stroke(pill, "Stroke", 1, 0.5)
+	stroke(pill, "Stroke", 1, 0.88)
 	pad(pill, 9, 0, 9, 0)
 	list(pill, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
 	local colorKey = cfg.Danger and "Danger" or "Accent"
@@ -1660,8 +1711,8 @@ function Section:CreateButton(cfg)
 	end
 	function el:Fire() fire(cfg.Callback) end
 	R.Row.Activated:Connect(function()
-		tw(pill, 0.08, { BackgroundTransparency = 0.5 })
-		task.delay(0.12, function() if pill.Parent then tw(pill, 0.15, { BackgroundTransparency = 0 }) end end)
+		tw(pill, 0.08, { BackgroundTransparency = 0.7 })
+		task.delay(0.12, function() if pill.Parent then tw(pill, 0.15, { BackgroundTransparency = GLASS.Elev }) end end)
 		fire(cfg.Callback)
 	end)
 	register(el, cfg, self, R)
@@ -1675,12 +1726,12 @@ function Section:CreateInput(cfg)
 	local el = { Type = "Input", Value = cfg.Default or "" }
 	local box = new("TextBox", {
 		AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(128, 26), BackgroundColor3 = "@Elevated",
-		BackgroundTransparency = 0, PlaceholderText = cfg.Placeholder or "Type here...", PlaceholderColor3 = "@Muted",
+		BackgroundTransparency = GLASS.Elev, PlaceholderText = cfg.Placeholder or "Type here...", PlaceholderColor3 = "@Muted",
 		TextColor3 = "@Text", TextSize = 12, ClearTextOnFocus = false, Text = tostring(el.Value), TextXAlignment = Enum.TextXAlignment.Left,
 		ClipsDescendants = true,
 	}, R.Row)
 	corner(box, 7)
-	stroke(box, "Stroke", 1, 0.5)
+	stroke(box, "Stroke", 1, 0.88)
 	pad(box, 8, 0, 8, 0)
 	function el:Set(v, silent)
 		self.Value = v
@@ -1709,9 +1760,9 @@ function Section:CreateKeybind(cfg)
 	local win = self.Tab.Window
 	local R = makeRow(self, cfg, { right = 90 })
 	local el = { Type = "Keybind", Value = cfg.Default }
-	local btn = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(84, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0 }, R.Row)
+	local btn = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(84, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev }, R.Row)
 	corner(btn, 7)
-	stroke(btn, "Stroke", 1, 0.5)
+	stroke(btn, "Stroke", 1, 0.88)
 	local lbl = new("TextLabel", { Size = UDim2.fromScale(1, 1), TextSize = 12, TextColor3 = "@Text" }, btn)
 	local function show()
 		lbl.Text = el.Value and (KEY_SHORT[el.Value.Name] or el.Value.Name) or "None"
@@ -1724,6 +1775,7 @@ function Section:CreateKeybind(cfg)
 	function el:Set(k, silent)
 		self.Value = k
 		if self.Flag then RageHub.Flags[self.Flag] = k end
+		if self.Save ~= false then win:_markDirty() end
 		show()
 		if not silent then fire(cfg.OnChanged, k) end
 	end
@@ -1748,7 +1800,7 @@ function Section:CreateColorPicker(cfg)
 	local el = { Type = "ColorPicker", Value = cfg.Default or Theme.Accent }
 	local sw = new("TextButton", { AnchorPoint = Vector2.new(1, 0.5), Position = ctlPos(), Size = UDim2.fromOffset(38, 22), BackgroundColor3 = el.Value, BackgroundTransparency = 0 }, R.Row)
 	corner(sw, 6)
-	stroke(sw, "Stroke", 1, 0.2)
+	stroke(sw, "Stroke", 1, 0.6)
 	local h, s, v = el.Value:ToHSV()
 	local pop, sv, svCur, hueCur, hex
 
@@ -1764,9 +1816,9 @@ function Section:CreateColorPicker(cfg)
 		changed(el, silent)
 	end
 	local function build()
-		pop = new("Frame", { BackgroundColor3 = "@Card" })
+		pop = new("Frame", { BackgroundColor3 = "@Popup", BackgroundTransparency = GLASS.Popup })
 		corner(pop, 10)
-		stroke(pop, "Stroke", 1, 0)
+		stroke(pop, "Stroke", 1, 0.8)
 		pad(pop, 8, 8, 8, 8)
 		sv = new("Frame", { Size = UDim2.new(1, 0, 0, 110), BackgroundColor3 = Color3.fromHSV(h, 1, 1) }, pop)
 		corner(sv, 6)
@@ -1790,7 +1842,7 @@ function Section:CreateColorPicker(cfg)
 		new("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 2 }, hueCur)
 
 		hex = new("TextBox", {
-			Position = UDim2.fromOffset(0, 142), Size = UDim2.new(1, 0, 0, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0,
+			Position = UDim2.fromOffset(0, 142), Size = UDim2.new(1, 0, 0, 26), BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev,
 			TextColor3 = "@Text", TextSize = 12, ClearTextOnFocus = false, Text = "",
 		}, pop)
 		corner(hex, 7)
@@ -1864,7 +1916,7 @@ end
 
 function Section:CreateParagraph(cfg)
 	cfg = cfg or {}
-	local f = new("Frame", { Name = "Paragraph", Size = UDim2.new(1, 0, 0, 40), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = "@Elevated", BackgroundTransparency = 0.45 }, self.Body)
+	local f = new("Frame", { Name = "Paragraph", Size = UDim2.new(1, 0, 0, 40), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = "@Elevated", BackgroundTransparency = 0.93 }, self.Body)
 	corner(f, 8)
 	pad(f, 10, 9, 10, 10)
 	list(f, 3)
@@ -1880,7 +1932,7 @@ end
 
 function Section:CreateDivider()
 	local f = new("Frame", { Name = "Divider", Size = UDim2.new(1, 0, 0, 9), BackgroundTransparency = 1 }, self.Body)
-	new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 8, 0.5, 0), Size = UDim2.new(1, -16, 0, 1), BackgroundColor3 = "@Stroke", BackgroundTransparency = 0.5 }, f)
+	new("Frame", { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 8, 0.5, 0), Size = UDim2.new(1, -16, 0, 1), BackgroundColor3 = "@Stroke", BackgroundTransparency = 0.9 }, f)
 	self.Est = self.Est + 10
 	return { Type = "Divider", Row = f, Destroy = function() f:Destroy() end }
 end
@@ -1907,8 +1959,13 @@ local function decode(v)
 	return v
 end
 
-local function safeName(n) return (tostring(n or "default"):gsub("[^%w%-_ ]", "")) end
+local function safeName(n)
+	local s = tostring(n or "default"):gsub("[^%w%-_ ]", "")
+	if s == "" then s = "default" end
+	return s
+end
 
+-- creates <ConfigFolder>/ and <ConfigFolder>/configs/ (works on every executor with file support)
 function Window:_dir()
 	local base = self.ConfigFolder
 	pcall(function()
@@ -1918,10 +1975,33 @@ function Window:_dir()
 	return base .. "/configs"
 end
 
+function Window:_metaPath() return self.ConfigFolder .. "/meta.json" end
+
+function Window:_loadMeta()
+	local ok, raw = pcall(readfile, self:_metaPath())
+	if not ok then return end
+	local ok2, d = pcall(function() return HttpService:JSONDecode(raw) end)
+	if ok2 and type(d) == "table" then
+		if type(d.AutoSave) == "boolean" then self.Config.AutoSave = d.AutoSave end
+		if type(d.AutoLoad) == "boolean" then self.Config.AutoLoad = d.AutoLoad end
+		if type(d.Name) == "string" and d.Name ~= "" then self.Config.Name = safeName(d.Name) end
+	end
+end
+
+function Window:SaveMeta()
+	if not self.FilesOk then return end
+	self:_dir()
+	pcall(function() writefile(self:_metaPath(), HttpService:JSONEncode(self.Config)) end)
+end
+
 function Window:SaveConfig(name)
-	if not writefile then return false, "writefile is not supported by this executor" end
-	name = safeName(name)
+	if not self.FilesOk then return false, "this executor can't write files" end
+	name = safeName(name or self.Config.Name)
 	local data = {}
+	if self._cfgData and self._cfgName == name then
+		-- keep saved values of options that are not created (yet) so they are never lost
+		for k, v in pairs(self._cfgData) do data[k] = v end
+	end
 	for flag, el in pairs(RageHub.Options) do
 		if el.Save ~= false and el.Value ~= nil then data[flag] = encode(el.Value) end
 	end
@@ -1930,18 +2010,28 @@ function Window:SaveConfig(name)
 end
 
 function Window:LoadConfig(name)
-	if not readfile then return false, "readfile is not supported by this executor" end
-	name = safeName(name)
-	local path = self:_dir() .. "/" .. name .. ".json"
-	local ok, raw = pcall(readfile, path)
+	if not self.FilesOk then return false, "this executor can't read files" end
+	name = safeName(name or self.Config.Name)
+	local ok, raw = pcall(readfile, self:_dir() .. "/" .. name .. ".json")
 	if not ok then return false, "config not found" end
 	local ok2, data = pcall(function() return HttpService:JSONDecode(raw) end)
 	if not ok2 or type(data) ~= "table" then return false, "config is corrupted" end
+	local was = self._loading
+	self._loading = true
+	self._cfgData, self._cfgName = data, name
 	for flag, val in pairs(data) do
 		local el = RageHub.Options[flag]
 		if el and el.Set and el.Save ~= false then pcall(el.Set, el, decode(val)) end
 	end
+	task.delay(0.6, function() self._loading = was end)
 	return true
+end
+
+-- options created after the startup load (slow scripts) still receive their saved value
+function Window:_applySaved(el)
+	local d = self._cfgData
+	if not d or not el.Flag or el.Save == false or d[el.Flag] == nil then return end
+	pcall(el.Set, el, decode(d[el.Flag]))
 end
 
 function Window:DeleteConfig(name)
@@ -1962,83 +2052,152 @@ function Window:ListConfigs()
 	return out
 end
 
-function Window:SetAutoLoad(name)
-	if not writefile then return end
-	self:_dir()
-	pcall(writefile, self.ConfigFolder .. "/autoload.txt", name and safeName(name) or "")
+function Window:AutoLoad() return self:LoadConfig(self.Config.Name) end
+
+function Window:_markDirty()
+	if not self._ready or self._loading or not self.FilesOk or not self.Config.AutoSave then return end
+	self._saveTick = (self._saveTick or 0) + 1
+	local id = self._saveTick
+	task.delay(1.5, function()
+		if id == self._saveTick and self.Main.Parent then self:SaveConfig(self.Config.Name) end
+	end)
 end
 
-function Window:GetAutoLoad()
-	if not readfile then return nil end
-	local ok, n = pcall(readfile, self.ConfigFolder .. "/autoload.txt")
-	if ok and n and n ~= "" then return n end
+--// auto execute ---------------------------------------------------------------------
+-- The URL (or code) is set by the developer using Rage Hub, never by the player:
+--   RageHub:CreateWindow({ AutoExecuteURL = "https://example.com/script.lua" })
+function Window:SetAutoExecute(v)
+	if type(v) ~= "string" or v == "" then
+		self.AutoExecuteScript = nil
+	elseif v:match("^https?://") then
+		self.AutoExecuteScript = ('loadstring(game:HttpGet("%s"))()'):format(v)
+	else
+		self.AutoExecuteScript = v
+	end
+	if self._onAutoExec then self._onAutoExec() end
 end
 
-function Window:AutoLoad()
-	local n = self:GetAutoLoad()
-	if n then
-		local ok = self:LoadConfig(n)
-		if ok then self:Notify({ Title = "Config loaded", Content = n, Type = "success", Duration = 3 }) end
+function Window:AutoExecuteReady() return self.AutoExecuteScript ~= nil end
+
+function Window:QueueAutoExecute()
+	if self._queued or not queueTp or not self.AutoExecuteScript then return end
+	if RageHub.Flags.RH_AutoExecute == false then return end
+	self._queued = pcall(queueTp, self.AutoExecuteScript)
+end
+
+--// teleport helpers -------------------------------------------------------------------
+local lastOwnTeleport = 0
+
+-- runs a teleport and waits to see if Roblox rejects it (full server, closed server, ...)
+local function waitTeleport(fn, timeout)
+	lastOwnTeleport = os.clock()
+	local failed
+	local c = TeleportService.TeleportInitFailed:Connect(function(_, result, msg)
+		failed = (msg and msg ~= "") and msg or tostring(result)
+	end)
+	local ok, err = pcall(fn)
+	if not ok then failed = tostring(err) end
+	local t0 = os.clock()
+	while not failed and os.clock() - t0 < (timeout or 10) do task.wait(0.1) end
+	c:Disconnect()
+	return failed == nil, failed
+end
+
+local function httpJson(url)
+	for attempt = 1, 3 do
+		local ok, res = pcall(function() return HttpService:JSONDecode(game:HttpGet(url)) end)
+		if ok and type(res) == "table" then return res end
+		if attempt < 3 then task.wait(1.5 * attempt) end
+	end
+end
+
+-- reads both ends of the server list (fewest first and most first) so the extremes are really there
+local function collectServers()
+	local seen, out = {}, {}
+	local function pull(order, pages)
+		local cursor
+		for _ = 1, pages do
+			local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=%s&excludeFullGames=true&limit=100%s")
+				:format(game.PlaceId, order, cursor and ("&cursor=" .. cursor) or "")
+			local res = httpJson(url)
+			if not res or type(res.data) ~= "table" then return end
+			for _, s in ipairs(res.data) do
+				if type(s) == "table" and s.id and s.id ~= game.JobId and not seen[s.id]
+					and type(s.playing) == "number" and type(s.maxPlayers) == "number" and s.playing < s.maxPlayers then
+					seen[s.id] = true
+					s.r = math.random()
+					out[#out + 1] = s
+				end
+			end
+			cursor = res.nextPageCursor
+			if not cursor then return end
+		end
+	end
+	pull("Asc", 2)
+	pull("Desc", 2)
+	return out
+end
+
+-- tries servers best-first; if one is full or refuses, it moves on to the next one
+local function hopBlocking(mode)
+	mode = mode or "Least Players"
+	local servers = collectServers()
+	if #servers == 0 then
+		RageHub:Notify({ Title = "Server Hop", Content = "Couldn't read the server list. Trying a normal rejoin.", Type = "warning" })
+		local ok, why = waitTeleport(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end, 12)
+		if not ok then RageHub:Notify({ Title = "Server Hop", Content = "Failed: " .. tostring(why), Type = "error" }) end
 		return ok
 	end
+	if mode == "Most Players" then
+		table.sort(servers, function(a, b) if a.playing ~= b.playing then return a.playing > b.playing end return a.r < b.r end)
+	elseif mode == "Random" then
+		table.sort(servers, function(a, b) return a.r < b.r end)
+	else
+		table.sort(servers, function(a, b) if a.playing ~= b.playing then return a.playing < b.playing end return a.r < b.r end)
+	end
+	local tries = math.min(#servers, 12)
+	for i = 1, tries do
+		local s = servers[i]
+		RageHub:Notify({ Title = "Server Hop", Content = ("Joining a server with %d/%d players..."):format(s.playing, s.maxPlayers), Type = "info", Duration = 3 })
+		local ok, why = waitTeleport(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id, LocalPlayer) end, 12)
+		if ok then return true end
+		RageHub:Notify({ Title = "Server Hop", Content = ("%s. Trying another server (%d/%d)..."):format(tostring(why or "Teleport failed"), i, tries), Type = "warning", Duration = 3 })
+		task.wait(0.5)
+	end
+	RageHub:Notify({ Title = "Server Hop", Content = "Couldn't join any server. Try again in a moment.", Type = "error" })
 	return false
 end
 
---// server utilities ---------------------------------------------------------------
 function Window:Rejoin()
-	local ok = pcall(function()
-		if #Players:GetPlayers() > 1 and game.JobId ~= "" then
-			TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
-		else
-			TeleportService:Teleport(game.PlaceId, LocalPlayer)
-		end
+	self:QueueAutoExecute()
+	task.spawn(function()
+		local ok = waitTeleport(function()
+			if #Players:GetPlayers() > 1 and game.JobId ~= "" then
+				TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+			else
+				TeleportService:Teleport(game.PlaceId, LocalPlayer)
+			end
+		end, 12)
+		if not ok then hopBlocking("Random") end
 	end)
-	return ok
 end
 
 function Window:ServerHop(mode)
-	mode = mode or "Least Players"
-	RageHub:Notify({ Title = "Server Hop", Content = "Searching for a " .. string.lower(mode) .. " server...", Type = "info", Duration = 3 })
-	task.spawn(function()
-		local cands, cursor, pages = {}, nil, 0
-		repeat
-			local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100%s"):format(game.PlaceId, cursor and ("&cursor=" .. cursor) or "")
-			local ok, res = pcall(function() return HttpService:JSONDecode(game:HttpGet(url)) end)
-			if not ok or type(res) ~= "table" or type(res.data) ~= "table" then break end
-			for _, s in ipairs(res.data) do
-				if s.id ~= game.JobId and s.playing and s.maxPlayers and s.playing < s.maxPlayers - 1 then cands[#cands + 1] = s end
-			end
-			cursor = res.nextPageCursor
-			pages = pages + 1
-		until not cursor or pages >= 3 or #cands >= 100
-		if #cands == 0 then
-			RageHub:Notify({ Title = "Server Hop", Content = "No other server found, rejoining instead.", Type = "warning" })
-			pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end)
-			return
-		end
-		local pick = cands[1]
-		if mode == "Random" then
-			pick = cands[math.random(1, #cands)]
-		else
-			for _, s in ipairs(cands) do
-				if mode == "Most Players" then
-					if s.playing > pick.playing then pick = s end
-				else
-					if s.playing < pick.playing then pick = s end
-				end
-			end
-		end
-		pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, pick.id, LocalPlayer) end)
-	end)
+	self:QueueAutoExecute()
+	task.spawn(hopBlocking, mode)
 end
 
 function Window:JoinServer(jobId)
-	jobId = tostring(jobId or ""):gsub("%s", "")
+	jobId = (tostring(jobId or ""):gsub("%s", ""))
 	if jobId == "" then
 		RageHub:Notify({ Title = "Join Server", Content = "Paste a Job ID first.", Type = "warning" })
 		return
 	end
-	pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, jobId, LocalPlayer) end)
+	self:QueueAutoExecute()
+	task.spawn(function()
+		local ok, why = waitTeleport(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, jobId, LocalPlayer) end, 12)
+		if not ok then RageHub:Notify({ Title = "Join Server", Content = tostring(why or "Couldn't join that server."), Type = "error" }) end
+	end)
 end
 
 local function copy(text, what)
@@ -2056,25 +2215,22 @@ local function fmtTime(s)
 	return string.format("%dm %02ds", s // 60, s % 60)
 end
 
---// built-in settings tab ------------------------------------------------------------
-function Window:CreateSettingsTab(opts)
-	opts = opts or {}
-	local win = self
-	local tab = self:CreateTab(opts.Name or "Settings", opts.Icon or "settings")
-	local started = os.clock()
+--// background features (work with or without the Settings tab) -----------------------
+local function makeFeatures(win)
+	local F = {}
 
-	--// features ---------------------------------------------------------------
-	local afkConn, afkDisabled = nil, {}
-	local function setAntiAfk(on)
+	-- Anti AFK
+	local afkConn, afkOff = nil, {}
+	function F.AntiAfk(on)
 		if afkConn then afkConn:Disconnect(); afkConn = nil end
-		for _, c in ipairs(afkDisabled) do pcall(function() c:Enable() end) end
-		afkDisabled = {}
+		for _, c in ipairs(afkOff) do pcall(function() c:Enable() end) end
+		afkOff = {}
 		if not on then return end
 		pcall(function()
 			if getconnections then
 				for _, c in ipairs(getconnections(LocalPlayer.Idled)) do
 					c:Disable()
-					afkDisabled[#afkDisabled + 1] = c
+					afkOff[#afkOff + 1] = c
 				end
 			end
 		end)
@@ -2087,63 +2243,123 @@ function Window:CreateSettingsTab(opts)
 		end)
 	end
 
-	local rejoinConns, rejoining = {}, false
-	local function clearRejoin()
-		for _, c in ipairs(rejoinConns) do pcall(function() c:Disconnect() end) end
-		rejoinConns = {}
+	-- Auto Reconnect: kick, disconnect, error prompt, lost connection.
+	-- 1) same server  2) any server of this game  3) hop to other servers (skips full ones)
+	local conns, busy = {}, false
+	local function clear()
+		for _, c in ipairs(conns) do pcall(function() c:Disconnect() end) end
+		conns = {}
 	end
-	local function doRejoin()
-		if rejoining or not RageHub.Flags.RH_AutoRejoin then return end
-		rejoining = true
-		RageHub:Notify({ Title = "Auto Rejoin", Content = "Connection lost, rejoining...", Type = "warning", Duration = 5 })
+	local function reconnect()
+		if busy or not RageHub.Flags.RH_AutoReconnect then return end
+		busy = true
+		RageHub:Notify({ Title = "Auto Reconnect", Content = "Connection lost. Reconnecting...", Type = "warning", Duration = 5 })
 		task.spawn(function()
-			for attempt = 1, 8 do
-				if not RageHub.Flags.RH_AutoRejoin then break end
-				pcall(function()
-					if RageHub.Flags.RH_RejoinSame and attempt <= 3 and game.JobId ~= "" then
-						TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
-					else
-						TeleportService:Teleport(game.PlaceId, LocalPlayer)
-					end
-				end)
-				task.wait(7)
+			for attempt = 1, 16 do
+				if not RageHub.Flags.RH_AutoReconnect then break end
+				win:QueueAutoExecute()
+				local ok
+				if attempt <= 2 and RageHub.Flags.RH_RejoinSame ~= false and game.JobId ~= "" then
+					ok = waitTeleport(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end, 12)
+				elseif attempt <= 4 then
+					ok = waitTeleport(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end, 12)
+				else
+					ok = hopBlocking("Random")
+				end
+				if ok then task.wait(20) end -- teleport accepted: if we are still here, it stalled
+				RageHub:Notify({ Title = "Auto Reconnect", Content = ("Attempt %d failed. Trying %s..."):format(attempt, attempt < 4 and "again" or "another server"), Type = "warning", Duration = 4 })
+				task.wait(math.min(2 * attempt, 10))
 			end
-			rejoining = false
+			busy = false
 		end)
 	end
-	local function setAutoRejoin(on)
-		clearRejoin()
+	local function guarded()
+		if os.clock() - lastOwnTeleport < 30 then return end -- our own teleport / a game teleport, not a disconnect
+		reconnect()
+	end
+	function F.Reconnect(on)
+		clear()
 		if not on then return end
-		rejoinConns[#rejoinConns + 1] = GuiService.ErrorMessageChanged:Connect(function()
+		conns[#conns + 1] = GuiService.ErrorMessageChanged:Connect(function()
 			local ok, msg = pcall(function() return GuiService:GetErrorMessage() end)
-			if ok and msg and msg ~= "" then doRejoin() end
+			if ok and msg and msg ~= "" then guarded() end
+		end)
+		pcall(function()
+			conns[#conns + 1] = svc("NetworkClient").ChildRemoved:Connect(function()
+				task.wait(2)
+				guarded()
+			end)
 		end)
 		task.spawn(function()
 			local ok, overlay = pcall(function()
 				return CoreGui:WaitForChild("RobloxPromptGui", 10):WaitForChild("promptOverlay", 10)
 			end)
-			if ok and overlay and RageHub.Flags.RH_AutoRejoin then
-				rejoinConns[#rejoinConns + 1] = overlay.ChildAdded:Connect(function(c)
-					if c.Name == "ErrorPrompt" then doRejoin() end
+			if ok and overlay and RageHub.Flags.RH_AutoReconnect then
+				conns[#conns + 1] = overlay.ChildAdded:Connect(function(c)
+					if c.Name == "ErrorPrompt" then guarded() end
 				end)
+				if overlay:FindFirstChild("ErrorPrompt") then guarded() end
 			end
 		end)
 	end
 
-	local queued = false
-	local function autoExecScript()
-		local s = RageHub.Flags.RH_AutoExecScript
-		if not s or s == "" then s = win.AutoExecuteScript end
-		return s
+	return F
+end
+
+function Window:_initCore(cfg)
+	self.Config = { AutoSave = true, AutoLoad = true, Name = safeName(cfg.ConfigName or "default") }
+	self.FilesOk = (writefile and readfile and makefolder and isfolder) and true or false
+	if self.FilesOk then
+		self:_dir()
+		self:_loadMeta()
 	end
-	local function queueScript()
-		if queued or not RageHub.Flags.RH_AutoExecute or not queueTp then return end
-		local s = autoExecScript()
-		if s and s ~= "" then
-			queued = pcall(queueTp, s)
+
+	-- defaults: Anti AFK, Auto Reconnect and "same server first" are ON
+	RageHub.Flags.RH_AntiAfk = true
+	RageHub.Flags.RH_AutoReconnect = true
+	RageHub.Flags.RH_RejoinSame = true
+	self.F = makeFeatures(self)
+	self.F.AntiAfk(true)
+	self.F.Reconnect(true)
+	self._onDestroy[#self._onDestroy + 1] = function()
+		self.F.AntiAfk(false)
+		self.F.Reconnect(false)
+	end
+
+	self.Maid:Add(LocalPlayer.OnTeleport:Connect(function()
+		lastOwnTeleport = os.clock()
+		self:QueueAutoExecute()
+	end))
+
+	-- startup: wait until the script finished building its UI, then auto load, then auto save
+	task.spawn(function()
+		local t0 = os.clock()
+		repeat task.wait(0.25) until not self.Main.Parent or os.clock() - self._lastCreate > 0.8 or os.clock() - t0 > 15
+		if not self.Main.Parent then return end
+		if self.FilesOk then
+			if self.Config.AutoLoad then
+				local ok = self:LoadConfig(self.Config.Name)
+				if ok then
+					self:Log("Config loaded: " .. self.Config.Name, "success")
+					self._lateLoad = true
+				end
+				task.wait(0.7)
+			end
+			self._ready = true
+			if self.Config.AutoSave then self:SaveConfig(self.Config.Name) end
+		else
+			self._ready = true
+			self:Log("This executor can't save files, so configs are disabled.", "warning")
 		end
-	end
-	self.Maid:Add(LocalPlayer.OnTeleport:Connect(queueScript))
+	end)
+end
+
+--// built-in settings tab ------------------------------------------------------------
+function Window:CreateSettingsTab(opts)
+	opts = opts or {}
+	local win = self
+	local tab = self:CreateTab(opts.Name or "Settings", opts.Icon or "settings")
+	local started = os.clock()
 
 	local lowGfx = { on = false }
 	local function setLowGfx(on)
@@ -2167,10 +2383,7 @@ function Window:CreateSettingsTab(opts)
 			for _, e in ipairs(lowGfx.fx or {}) do pcall(function() e[1].Enabled = e[2] end) end
 		end
 	end
-
 	self._onDestroy[#self._onDestroy + 1] = function()
-		setAntiAfk(false)
-		clearRejoin()
 		setLowGfx(false)
 		pcall(function() RunService:Set3dRenderingEnabled(true) end)
 	end
@@ -2178,32 +2391,52 @@ function Window:CreateSettingsTab(opts)
 	--// Join & Stay ------------------------------------------------------------
 	local js = tab:CreateSection("Join & Stay", "refresh")
 	js:CreateToggle({
-		Name = "Auto Rejoin", Description = "Rejoin automatically when you get kicked or disconnected.",
-		Flag = "RH_AutoRejoin", Default = false, Callback = function(v) setAutoRejoin(v) end,
+		Name = "Auto Reconnect", Description = "After a kick, disconnect or error it rejoins. If the server isn't responding it joins another one.",
+		Flag = "RH_AutoReconnect", Default = true, CallOnCreate = false, Callback = function(v) win.F.Reconnect(v) end,
 	})
 	js:CreateToggle({
-		Name = "Rejoin Same Server", Description = "Try to come back to this server first.",
-		Flag = "RH_RejoinSame", Default = false,
+		Name = "Same Server First", Description = "Try to come back to this server before looking for another.",
+		Flag = "RH_RejoinSame", Default = true,
 	})
-	js:CreateToggle({
-		Name = "Auto Execute", Description = "Run your script again after rejoin or server hop.",
-		Flag = "RH_AutoExecute", Default = false, CallOnCreate = false,
+
+	local ready0 = win:AutoExecuteReady()
+	local autoEl, autoHint, autoHelp
+	local wasReady = ready0
+	autoEl = js:CreateToggle({
+		Name = "Auto Execute", Description = ready0 and "Runs your script again after reconnect or server hop." or "URL is not configured yet.",
+		Flag = "RH_AutoExecute", Default = ready0, CallOnCreate = false,
 		Callback = function(v)
-			queued = false
-			if v and not queueTp then
-				RageHub:Notify({ Title = "Auto Execute", Content = "queue_on_teleport is not supported by your executor.", Type = "error" })
-			elseif v and (not autoExecScript() or autoExecScript() == "") then
-				RageHub:Notify({ Title = "Auto Execute", Content = "Paste the script to re-run below.", Type = "warning" })
+			if v and not win:AutoExecuteReady() then
+				autoEl:Set(false, true)
+				RageHub:Notify({ Title = "Auto Execute", Content = "URL is not configured yet.", Type = "warning" })
+				return
 			end
+			if v and not queueTp then
+				RageHub:Notify({ Title = "Auto Execute", Content = "Your executor doesn't support queue_on_teleport.", Type = "error" })
+			end
+			win._queued = false
 		end,
 	})
-	js:CreateInput({
-		Name = "Auto Execute Script", Description = "Example: loadstring(game:HttpGet(\"https://...\"))()",
-		Flag = "RH_AutoExecScript", Default = self.AutoExecuteScript or "", Placeholder = "script to run", CallOnCreate = false,
+	autoHint = js:CreateLabel({ Text = "Auto Execute URL is not configured yet.", Icon = "warning", IconColor = "Warning" })
+	autoHelp = js:CreateParagraph({
+		Title = "How to enable it",
+		Content = 'In your script add AutoExecuteURL = "https://your.link/script.lua" inside RageHub:CreateWindow({ ... }), or call Window:SetAutoExecute("https://...").',
 	})
+	local function refreshAuto()
+		local ready = win:AutoExecuteReady()
+		autoHint:SetVisible(not ready)
+		autoHelp.Row.Visible = not ready
+		autoEl:SetDescription(ready and "Runs your script again after reconnect or server hop." or "URL is not configured yet.")
+		if not ready and autoEl.Value then autoEl:Set(false, true) end
+		if ready and not wasReady then autoEl:Set(true, true) end
+		wasReady = ready
+	end
+	win._onAutoExec = refreshAuto
+	refreshAuto()
+
 	js:CreateToggle({
 		Name = "Anti AFK", Description = "Never get kicked for being idle.",
-		Flag = "RH_AntiAfk", Default = true, Callback = function(v) setAntiAfk(v) end,
+		Flag = "RH_AntiAfk", Default = true, CallOnCreate = false, Callback = function(v) win.F.AntiAfk(v) end,
 	})
 
 	--// Server -----------------------------------------------------------------
@@ -2213,14 +2446,14 @@ function Window:CreateSettingsTab(opts)
 	local lblSession = sv:CreateLabel({ Text = "Session: 0m 00s", Icon = "clock" })
 	sv:CreateDivider()
 	sv:CreateButton({ Name = "Rejoin Server", Description = "Reconnect to this exact server.", ButtonText = "Rejoin", Icon = "refresh",
-		Callback = function() queueScript(); win:Rejoin() end })
+		Callback = function() win:Rejoin() end })
 	sv:CreateDropdown({ Name = "Hop Mode", Options = { "Least Players", "Most Players", "Random" }, Default = "Least Players", Flag = "RH_HopMode" })
-	sv:CreateButton({ Name = "Server Hop", Description = "Jump to another public server.", ButtonText = "Hop", Icon = "shuffle",
-		Callback = function() queueScript(); win:ServerHop(RageHub.Flags.RH_HopMode) end })
+	sv:CreateButton({ Name = "Server Hop", Description = "Jumps to another server. If it's full it tries the next one.", ButtonText = "Hop", Icon = "shuffle",
+		Callback = function() win:ServerHop(RageHub.Flags.RH_HopMode) end })
 	sv:CreateButton({ Name = "Copy Job ID", ButtonText = "Copy", Icon = "copy", Callback = function() copy(game.JobId, game.JobId) end })
 	sv:CreateInput({ Name = "Join Job ID", Placeholder = "paste Job ID", Flag = "RH_JoinId", Save = false, CallOnCreate = false })
 	sv:CreateButton({ Name = "Join Server", ButtonText = "Join", Icon = "login",
-		Callback = function() queueScript(); win:JoinServer(RageHub.Flags.RH_JoinId) end })
+		Callback = function() win:JoinServer(RageHub.Flags.RH_JoinId) end })
 
 	task.spawn(function()
 		while win.Main.Parent do
@@ -2240,18 +2473,13 @@ function Window:CreateSettingsTab(opts)
 	local ui = tab:CreateSection("Interface", "monitor")
 	ui:CreateSlider({ Name = "UI Scale", Min = 60, Max = 140, Increment = 5, Default = 100, Suffix = "%", Flag = "RH_Scale",
 		Callback = function(v) win:SetScale(v / 100) end })
-	ui:CreateSlider({ Name = "Transparency", Min = 0, Max = 60, Increment = 5, Default = 0, Suffix = "%", Flag = "RH_Alpha",
+	ui:CreateSlider({ Name = "Glass Transparency", Min = 0, Max = 60, Increment = 5, Default = 0, Suffix = "%", Flag = "RH_Alpha",
 		Callback = function(v) win:SetTransparency(v / 100) end })
-	local names = {}
-	for n in pairs(RageHub.Themes) do names[#names + 1] = n end
-	table.sort(names)
-	ui:CreateDropdown({ Name = "Theme", Options = names, Default = RageHub.CurrentTheme, Flag = "RH_Theme",
-		Callback = function(v) if v then RageHub:SetTheme(v) end end })
 	ui:CreateKeybind({ Name = "Toggle Key", Description = "Show / hide the window (PC).", Default = self.ToggleKey, Flag = "RH_ToggleKey",
 		OnChanged = function(k) win:SetToggleKey(k or Enum.KeyCode.Unknown) end })
 	ui:CreateToggle({ Name = "Floating Button", Description = "Draggable button to open the menu.", Default = self.Float.Visible, Flag = "RH_Float",
 		Callback = function(v) win:SetFloatingButton(v) end })
-	ui:CreateToggle({ Name = "Compact Sidebar", Default = self.Collapsed, Flag = "RH_Compact",
+	ui:CreateToggle({ Name = "Compact Sidebar", Description = "Icons only.", Default = self.Collapsed, Flag = "RH_Compact",
 		Callback = function(v) win:SetCollapsed(v) end })
 	ui:CreateToggle({ Name = "Notifications", Default = true, Flag = "RH_Notify",
 		Callback = function(v) RageHub.Notifications = v end })
@@ -2269,38 +2497,49 @@ function Window:CreateSettingsTab(opts)
 
 	--// Config -----------------------------------------------------------------
 	local cf = tab:CreateSection("Config", "save")
+	cf:CreateLabel({
+		Text = win.FilesOk and ("Saved in " .. win.ConfigFolder .. "/configs") or "This executor can't save files.",
+		Icon = win.FilesOk and "folder" or "warning", IconColor = win.FilesOk and "Accent" or "Warning",
+	})
 	local dd
-	cf:CreateInput({ Name = "Config Name", Default = "default", Flag = "RH_ConfigName", Save = false, CallOnCreate = false })
-	dd = cf:CreateDropdown({ Name = "Saved Configs", Options = win:ListConfigs(), Search = true, Placeholder = "none", Flag = "RH_ConfigSel", Save = false })
+	local function refreshList() if dd then dd:Refresh(win:ListConfigs(), true) end end
+	cf:CreateToggle({ Name = "Auto Save", Description = "Saves every change automatically.", Default = win.Config.AutoSave, Flag = "RH_AutoSave", Save = false, CallOnCreate = false,
+		Callback = function(v)
+			win.Config.AutoSave = v
+			win:SaveMeta()
+			if v then win:SaveConfig(win.Config.Name); refreshList() end
+		end })
+	cf:CreateToggle({ Name = "Auto Load", Description = "Loads your config when the script starts.", Default = win.Config.AutoLoad, Flag = "RH_AutoLoadCfg", Save = false, CallOnCreate = false,
+		Callback = function(v) win.Config.AutoLoad = v; win:SaveMeta() end })
+	cf:CreateInput({ Name = "Config Name", Default = win.Config.Name, Flag = "RH_ConfigName", Save = false, CallOnCreate = false,
+		Callback = function(v)
+			win.Config.Name = safeName(v)
+			win:SaveMeta()
+		end })
+	dd = cf:CreateDropdown({ Name = "Saved Configs", Options = win:ListConfigs(), Search = true, Placeholder = "none", Flag = "RH_ConfigSel", Save = false,
+		Callback = function(v) if v then win.Config.Name = safeName(v); win:SaveMeta() end end })
 	cf:CreateButton({ Name = "Save Config", ButtonText = "Save", Icon = "save", Callback = function()
-		local n = RageHub.Flags.RH_ConfigName
-		local ok, err = win:SaveConfig(n)
+		local ok, err = win:SaveConfig(win.Config.Name)
 		if ok then
-			dd:Refresh(win:ListConfigs(), true)
-			win:Notify({ Title = "Config saved", Content = safeName(n), Type = "success", Duration = 3 })
+			refreshList()
+			RageHub:Notify({ Title = "Config saved", Content = win.Config.Name, Type = "success", Duration = 3 })
 		else
-			win:Notify({ Title = "Save failed", Content = tostring(err), Type = "error" })
+			RageHub:Notify({ Title = "Save failed", Content = tostring(err), Type = "error" })
 		end
 	end })
 	cf:CreateButton({ Name = "Load Config", ButtonText = "Load", Icon = "download", Callback = function()
-		local n = RageHub.Flags.RH_ConfigSel or RageHub.Flags.RH_ConfigName
-		local ok, err = win:LoadConfig(n)
-		if ok then win:Notify({ Title = "Config loaded", Content = safeName(n), Type = "success", Duration = 3 })
-		else win:Notify({ Title = "Load failed", Content = tostring(err), Type = "error" }) end
+		local ok, err = win:LoadConfig(RageHub.Flags.RH_ConfigSel or win.Config.Name)
+		if ok then RageHub:Notify({ Title = "Config loaded", Content = tostring(RageHub.Flags.RH_ConfigSel or win.Config.Name), Type = "success", Duration = 3 })
+		else RageHub:Notify({ Title = "Load failed", Content = tostring(err), Type = "error" }) end
 	end })
 	cf:CreateButton({ Name = "Delete Config", ButtonText = "Delete", Icon = "trash", Danger = true, Callback = function()
 		local n = RageHub.Flags.RH_ConfigSel
 		if n then
 			win:DeleteConfig(n)
 			dd:Refresh(win:ListConfigs())
-			win:Notify({ Title = "Config deleted", Content = tostring(n), Type = "warning", Duration = 3 })
+			RageHub:Notify({ Title = "Config deleted", Content = tostring(n), Type = "warning", Duration = 3 })
 		end
 	end })
-	cf:CreateToggle({ Name = "Auto Load", Description = "Load the selected config on startup.", Default = win:GetAutoLoad() ~= nil, Flag = "RH_AutoLoad", Save = false,
-		CallOnCreate = false, Callback = function(v)
-			local n = RageHub.Flags.RH_ConfigSel or RageHub.Flags.RH_ConfigName
-			win:SetAutoLoad(v and n or nil)
-		end })
 
 	--// System -----------------------------------------------------------------
 	local sy = tab:CreateSection("System", "power")
@@ -2310,5 +2549,340 @@ function Window:CreateSettingsTab(opts)
 
 	return tab
 end
+
+
+--// dashboard ----------------------------------------------------------------------
+-- Window:CreateDashboard() builds a Home tab with: Profile, Overview (session time, FPS, ping,
+-- players), Game (name, place id, job id, executor), Quick Actions and an Activity log.
+-- Everything can be removed, and you can add your own stats, buttons, update notes, logs and cards.
+local Dashboard = {}
+Dashboard.__index = Dashboard
+
+local LOG_HEX = { info = "#9AA4FF", success = "#34D399", warning = "#FBBF24", error = "#F87171" }
+
+local function esc(s)
+	return (tostring(s):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
+end
+
+local function executorName()
+	local ok, n, v = pcall(function()
+		if identifyexecutor then return identifyexecutor() end
+		if getexecutorname then return getexecutorname() end
+	end)
+	if ok and n then return tostring(n) .. (v and (" " .. tostring(v)) or "") end
+	return "Unknown"
+end
+
+local function kvRow(sec, key, value, copyText)
+	local f = new("TextButton", { Name = key, Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = "@Elevated", BackgroundTransparency = 1 }, sec.Body)
+	corner(f, 7)
+	pad(f, 10, 0, 10, 0)
+	new("TextLabel", { Text = key, Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = "@SubText", Size = UDim2.fromScale(0.38, 1), TextXAlignment = Enum.TextXAlignment.Left }, f)
+	local v = new("TextLabel", {
+		Text = tostring(value), TextSize = 12, TextColor3 = "@Text", Position = UDim2.fromScale(0.38, 0), Size = UDim2.fromScale(0.62, 1),
+		TextXAlignment = Enum.TextXAlignment.Right, TextTruncate = Enum.TextTruncate.AtEnd,
+	}, f)
+	if copyText then
+		f.MouseEnter:Connect(function() tw(f, 0.1, { BackgroundTransparency = 0.9 }) end)
+		f.MouseLeave:Connect(function() tw(f, 0.1, { BackgroundTransparency = 1 }) end)
+		f.Activated:Connect(function() copy(tostring(copyText), key) end)
+	end
+	sec.Est = sec.Est + 30
+	return v
+end
+
+function Dashboard:_card(name, icon, opts)
+	return self.Tab:CreateSection(name, icon, opts)
+end
+
+--// profile card
+function Dashboard:_buildProfile()
+	local sec = self:_card("Profile", "user-circle")
+	self.Widgets.Profile = sec
+	local top = new("Frame", { Size = UDim2.new(1, 0, 0, 58), BackgroundTransparency = 1 }, sec.Body)
+	local av = new("ImageLabel", {
+		Position = UDim2.fromOffset(6, 5), Size = UDim2.fromOffset(48, 48), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0.85,
+		Image = ("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150"):format(LocalPlayer.UserId),
+	}, top)
+	corner(av, 24)
+	new("TextLabel", {
+		Text = LocalPlayer.DisplayName, Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = "@Text", Position = UDim2.fromOffset(64, 9),
+		Size = UDim2.new(1, -140, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+	}, top)
+	new("TextLabel", {
+		Text = "@" .. LocalPlayer.Name, Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = "@SubText", Position = UDim2.fromOffset(64, 29),
+		Size = UDim2.new(1, -140, 0, 14), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+	}, top)
+	if LocalPlayer.MembershipType == Enum.MembershipType.Premium then
+		local pill = new("TextLabel", {
+			Text = "PREMIUM", Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = "@OnAccent", AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -6, 0, 10), Size = UDim2.fromOffset(0, 18), AutomaticSize = Enum.AutomaticSize.X,
+			BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0,
+		}, top)
+		corner(pill, 9)
+		pad(pill, 8, 0, 8, 0)
+		accentGradient(pill, 0)
+	end
+	sec.Est = sec.Est + 60
+	kvRow(sec, "User ID", LocalPlayer.UserId, LocalPlayer.UserId)
+	kvRow(sec, "Account Age", LocalPlayer.AccountAge .. " days")
+end
+
+--// overview (stat tiles)
+function Dashboard:_grid()
+	if self.Grid then return self.Grid end
+	local sec = self:_card("Overview", "activity")
+	self.Widgets.Overview = sec
+	self.Grid = new("Frame", { Name = "Stats", Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1 }, sec.Body)
+	new("UIGridLayout", { CellSize = UDim2.new(0.5, -4, 0, 54), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder }, self.Grid)
+	self._statN = 0
+	return self.Grid
+end
+
+-- Dashboard:AddStat({ Id, Name, Value, Icon }) -> { Set(value), Destroy() }
+function Dashboard:AddStat(cfg)
+	cfg = cfg or {}
+	local grid = self:_grid()
+	local sec = self.Widgets.Overview
+	self._statN = self._statN + 1
+	local tile = new("Frame", { Name = cfg.Id or cfg.Name or "Stat", BackgroundColor3 = "@Elevated", BackgroundTransparency = 0.92, LayoutOrder = self._statN }, grid)
+	corner(tile, 9)
+	stroke(tile, "Stroke", 1, 0.93)
+	local ic = makeIcon(tile, cfg.Icon or "activity", 14, "Accent")
+	ic.Instance.Position = UDim2.fromOffset(10, 9)
+	new("TextLabel", {
+		Text = cfg.Name or "", Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = "@SubText", Position = UDim2.fromOffset(30, 8),
+		Size = UDim2.new(1, -38, 0, 16), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+	}, tile)
+	local val = new("TextLabel", {
+		Text = tostring(cfg.Value == nil and "-" or cfg.Value), Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = "@Text",
+		Position = UDim2.fromOffset(10, 27), Size = UDim2.new(1, -18, 0, 20), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+	}, tile)
+	local st = { Frame = tile }
+	function st:Set(v) val.Text = tostring(v) end
+	function st:Destroy() tile:Destroy() end
+	if cfg.Id then self.Stats[cfg.Id] = st end
+	if self._statN % 2 == 1 then sec.Est = sec.Est + 62 end
+	sec.Tab:_queueLayout()
+	return st
+end
+
+function Dashboard:_buildOverview()
+	self:AddStat({ Id = "Session", Name = "Session Time", Value = "0m 00s", Icon = "clock" })
+	self:AddStat({ Id = "FPS", Name = "FPS", Value = "-", Icon = "gauge" })
+	self:AddStat({ Id = "Ping", Name = "Ping", Value = "-", Icon = "wifi" })
+	self:AddStat({ Id = "Players", Name = "Players", Value = "-", Icon = "users" })
+end
+
+--// game card
+function Dashboard:_buildGame()
+	local sec = self:_card("Game", "gamepad")
+	self.Widgets.Game = sec
+	local nameRow = kvRow(sec, "Game", game.Name ~= "" and game.Name or "Unknown")
+	kvRow(sec, "Place ID", game.PlaceId, game.PlaceId)
+	kvRow(sec, "Job ID", game.JobId ~= "" and game.JobId or "Studio", game.JobId ~= "" and game.JobId or nil)
+	kvRow(sec, "Executor", executorName())
+	task.spawn(function()
+		local ok, info = pcall(function() return svc("MarketplaceService"):GetProductInfo(game.PlaceId) end)
+		if ok and info and info.Name and nameRow.Parent then nameRow.Text = tostring(info.Name) end
+	end)
+end
+
+--// quick actions
+function Dashboard:_actions()
+	if self.ActionsSec then return self.ActionsSec end
+	self.ActionsSec = self:_card("Quick Actions", "zap")
+	self.Widgets.Actions = self.ActionsSec
+	return self.ActionsSec
+end
+
+-- Dashboard:AddButton({ Name, Description, ButtonText, Icon, Danger, Callback })
+function Dashboard:AddButton(cfg)
+	return self:_actions():CreateButton(cfg)
+end
+
+function Dashboard:_buildActions()
+	local win = self.Window
+	self.Buttons.Rejoin = self:AddButton({ Name = "Rejoin", Description = "Reconnect to this server.", ButtonText = "Rejoin", Icon = "refresh", Callback = function() win:Rejoin() end })
+	self.Buttons.CopyJobId = self:AddButton({ Name = "Copy Job ID", ButtonText = "Copy", Icon = "copy", Callback = function() copy(game.JobId, game.JobId) end })
+end
+
+--// updates ("What's New")
+function Dashboard:_updatesCard()
+	if self.Widgets.Updates then return self.Widgets.Updates end
+	local sec = self:_card("What's New", "sparkles")
+	self.Widgets.Updates = sec
+	-- move it to the top of the dashboard
+	local list_ = self.Tab.Sections
+	table.remove(list_, #list_)
+	table.insert(list_, 1, sec)
+	self.Tab:_queueLayout()
+	self._upd = {}
+	return sec
+end
+
+-- Dashboard:AddUpdate({ Version = "v1.2", Title = "...", Text = "...", Date = "Nov 12" })
+function Dashboard:AddUpdate(cfg)
+	cfg = cfg or {}
+	local sec = self:_updatesCard()
+	self._updN = (self._updN or 0) + 1
+	local f = new("Frame", {
+		Name = "Update", Size = UDim2.new(1, 0, 0, 40), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = "@Elevated",
+		BackgroundTransparency = 0.92, LayoutOrder = -self._updN,
+	}, sec.Body)
+	corner(f, 9)
+	stroke(f, "Stroke", 1, 0.93)
+	pad(f, 10, 9, 10, 10)
+	list(f, 4)
+	local head = new("Frame", { Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, LayoutOrder = 1 }, f)
+	if cfg.Version then
+		local pill = new("TextLabel", {
+			Text = tostring(cfg.Version), Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = "@OnAccent", Size = UDim2.fromOffset(0, 18),
+			AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0,
+		}, head)
+		corner(pill, 9)
+		pad(pill, 8, 0, 8, 0)
+		accentGradient(pill, 0)
+	end
+	if cfg.Date then
+		new("TextLabel", {
+			Text = tostring(cfg.Date), Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = "@Muted", AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.fromOffset(100, 18), TextXAlignment = Enum.TextXAlignment.Right,
+		}, head)
+	end
+	if cfg.Title then
+		new("TextLabel", {
+			Text = tostring(cfg.Title), Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = "@Text", Size = UDim2.new(1, 0, 0, 16),
+			AutomaticSize = Enum.AutomaticSize.Y, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2,
+		}, f)
+	end
+	if cfg.Text then
+		new("TextLabel", {
+			Text = tostring(cfg.Text), Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = "@SubText", Size = UDim2.new(1, 0, 0, 12),
+			AutomaticSize = Enum.AutomaticSize.Y, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top, LayoutOrder = 3,
+		}, f)
+	end
+	self._upd[#self._upd + 1] = f
+	sec.Est = sec.Est + 80
+	sec.Tab:_queueLayout()
+	return { Frame = f, Destroy = function() f:Destroy() end }
+end
+
+function Dashboard:ClearUpdates()
+	for _, f in ipairs(self._upd or {}) do f:Destroy() end
+	self._upd = {}
+end
+
+--// logs: Dashboard:CreateLog({ Name, Icon, Max, Height, Empty }) -> { Add(text, kind), Clear() }
+function Dashboard:CreateLog(cfg)
+	cfg = cfg or {}
+	local sec = self.Tab:CreateSection(cfg.Name or "Log", cfg.Icon or "list", { Side = cfg.Side })
+	sec.Est = sec.Est + (cfg.Height or 150) + 8
+	local box = new("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 0, cfg.Height or 150), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0.93,
+		ScrollBarThickness = 3, ScrollBarImageColor3 = "@Stroke", ScrollBarImageTransparency = 0.6, CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y,
+	}, sec.Body)
+	corner(box, 9)
+	pad(box, 8, 6, 8, 6)
+	list(box, 3)
+	local empty = new("TextLabel", {
+		Text = cfg.Empty or "Nothing yet.", Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = "@Muted",
+		Size = UDim2.new(1, 0, 0, 20), LayoutOrder = 1000000,
+	}, box)
+	local log = { Section = sec, _n = 0, _items = {}, Max = cfg.Max or 60 }
+	function log:Add(text, kind, ts)
+		empty.Visible = false
+		self._n = self._n + 1
+		local col = LOG_HEX[kind or "info"] or LOG_HEX.info
+		local l = new("TextLabel", {
+			Text = ('<font color="%s">%s</font>  %s'):format(col, ts or os.date("%H:%M:%S"), esc(text)), RichText = true,
+			Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = "@Text", TextWrapped = true, Size = UDim2.new(1, 0, 0, 14),
+			AutomaticSize = Enum.AutomaticSize.Y, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+			LayoutOrder = -self._n,
+		}, box)
+		self._items[#self._items + 1] = l
+		if #self._items > self.Max then table.remove(self._items, 1):Destroy() end
+	end
+	function log:Clear()
+		for _, l in ipairs(self._items) do l:Destroy() end
+		self._items = {}
+		empty.Visible = true
+	end
+	return log
+end
+
+-- Dashboard:AddSection(name, icon) -> a normal Section (toggles, buttons, labels...) on the dashboard
+function Dashboard:AddSection(name, icon, opts)
+	return self.Tab:CreateSection(name, icon, opts)
+end
+
+function Dashboard:Log(text, kind) self.Window:Log(text, kind) end
+
+function Dashboard:RemoveWidget(name)
+	local sec = self.Widgets[name]
+	if sec then self.Tab:RemoveSection(sec) end
+	self.Widgets[name] = nil
+	if name == "Overview" then self.Grid = nil; self.Stats = {} end
+	if name == "Activity" then self.Activity = nil end
+	if name == "Actions" then self.ActionsSec = nil; self.Buttons = {} end
+	if name == "Updates" then self._upd = nil end
+end
+
+function Window:CreateDashboard(opts)
+	opts = opts or {}
+	local want = opts.Widgets or {}
+	local tab = self:CreateTab(opts.Name or "Dashboard", opts.Icon or "home")
+	local D = setmetatable({ Tab = tab, Window = self, Widgets = {}, Stats = {}, Buttons = {}, _statN = 0, _updN = 0 }, Dashboard)
+	self.Dashboard = D
+	local t0 = os.clock()
+
+	if want.Profile ~= false then D:_buildProfile() end
+	if want.Overview ~= false then D:_buildOverview() end
+	if want.Game ~= false then D:_buildGame() end
+	if want.Actions ~= false then D:_buildActions() end
+	if want.Activity ~= false then
+		D.Activity = D:CreateLog({ Name = "Activity", Icon = "list", Empty = "No activity yet." })
+		D.Widgets.Activity = D.Activity.Section
+		for _, e in ipairs(self._logBuf) do D.Activity:Add(e.text, e.kind, e.t) end
+	end
+
+	-- live stats: only runs while the dashboard is on screen (FPS counter included)
+	task.spawn(function()
+		local frames, last, conn, fresh = 0, os.clock(), nil, true
+		while self.Main.Parent do
+			local live = self.Visible and tab.IsActive
+			if live then
+				if not conn then
+					frames, last, fresh = 0, os.clock(), true
+					conn = RunService.Heartbeat:Connect(function() frames = frames + 1 end)
+				end
+				local now = os.clock()
+				local fps = frames / math.max(0.001, now - last)
+				frames, last = 0, now
+				local S = D.Stats
+				if S.Session then S.Session:Set(fmtTime(now - t0)) end
+				if S.FPS and not fresh then S.FPS:Set(math.floor(fps + 0.5)) end
+				if S.Ping then
+					local ping
+					pcall(function() ping = svc("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() end)
+					if not ping then pcall(function() ping = LocalPlayer:GetNetworkPing() * 2000 end) end
+					S.Ping:Set(ping and (math.floor(ping + 0.5) .. " ms") or "-")
+				end
+				if S.Players then S.Players:Set(#Players:GetPlayers() .. " / " .. Players.MaxPlayers) end
+				fresh = false
+			elseif conn then
+				conn:Disconnect()
+				conn = nil
+			end
+			task.wait(1)
+		end
+		if conn then conn:Disconnect() end
+	end)
+
+	return D
+end
+
 
 return RageHub

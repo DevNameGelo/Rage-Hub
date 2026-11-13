@@ -6,12 +6,27 @@ Tab.__index = Tab
 Section.__index = Section
 
 local SB_OPEN, SB_SHUT = 176, 62
+local FLOAT = 46
 local ELEMENTS = { "CreateToggle", "CreateSlider", "CreateDropdown", "CreateButton", "CreateInput",
 	"CreateKeybind", "CreateColorPicker", "CreateLabel", "CreateParagraph", "CreateDivider" }
 
-function Window:_a(inst, factor)
-	self._alpha[#self._alpha + 1] = { inst, factor or 1 }
-	if self.Alpha > 0 then inst.BackgroundTransparency = self.Alpha * (factor or 1) end
+local function viewport()
+	local g = RageHub.Gui
+	local v = g and g.AbsoluteSize or Vector2.new(0, 0)
+	if v.X < 100 or v.Y < 100 then
+		local cam = workspace.CurrentCamera
+		v = cam and cam.ViewportSize or Vector2.new(1280, 720)
+	end
+	return v
+end
+
+local function kp(t, v) return NumberSequenceKeypoint.new(t, v) end
+
+-- base = the glass transparency of this layer. The "Transparency" setting fades all layers further.
+function Window:_a(inst, base)
+	base = base or 0
+	self._alpha[#self._alpha + 1] = { inst, base }
+	inst.BackgroundTransparency = 1 - (1 - base) * (1 - self.Alpha)
 end
 
 function Window:SetTransparency(t)
@@ -19,7 +34,7 @@ function Window:SetTransparency(t)
 	local live = {}
 	for _, e in ipairs(self._alpha) do
 		if e[1].Parent then
-			e[1].BackgroundTransparency = self.Alpha * e[2]
+			e[1].BackgroundTransparency = 1 - (1 - e[2]) * (1 - self.Alpha)
 			live[#live + 1] = e
 		end
 	end
@@ -27,16 +42,32 @@ function Window:SetTransparency(t)
 end
 
 function Window:_applyScale()
-	local vp = RageHub.Gui.AbsoluteSize
+	local vp = viewport()
 	local w, h = self.Main.Size.X.Offset, self.Main.Size.Y.Offset
 	local auto = clamp(math.min(1, (vp.X - 20) / w, (vp.Y - 20) / h), 0.5, 1)
 	self._target = auto * self.UserScale
 	self.UIScale.Scale = self._target
 end
 
+-- keep the whole window on screen (acts like a wall at every edge)
+function Window:_setCenter(x, y)
+	local vp = viewport()
+	local sz = self.Main.AbsoluteSize
+	local hx, hy = sz.X / 2, sz.Y / 2
+	x = clamp(x, math.min(hx, vp.X - hx), math.max(hx, vp.X - hx))
+	y = clamp(y, math.min(hy, vp.Y - hy), math.max(hy, vp.Y - hy))
+	self.Main.Position = UDim2.fromOffset(x, y)
+end
+
+function Window:_clamp()
+	local ap, sz = self.Main.AbsolutePosition, self.Main.AbsoluteSize
+	self:_setCenter(ap.X + sz.X / 2, ap.Y + sz.Y / 2)
+end
+
 function Window:SetScale(s)
 	self.UserScale = clamp(s or 1, 0.6, 1.5)
 	self:_applyScale()
+	task.defer(function() if self.Main.Parent then self:_clamp() end end)
 end
 
 function Window:SetToggleKey(k) self.ToggleKey = k end
@@ -118,8 +149,18 @@ function Window:_hidePopup()
 	if p.onClose then p.onClose() end
 end
 
+--// logs (shown on the Dashboard, filled by notifications and your own Window:Log calls)
+function Window:Log(text, kind)
+	self._logBuf[#self._logBuf + 1] = { text = tostring(text), kind = kind or "info", t = os.date("%H:%M:%S") }
+	if #self._logBuf > 120 then table.remove(self._logBuf, 1) end
+	if self.Dashboard and self.Dashboard.Activity then
+		self.Dashboard.Activity:Add(text, kind)
+	end
+end
+
 --// search ----------------------------------------------------------------------
 function Window:_reg(el, cfg, sec)
+	self._lastCreate = os.clock()
 	if not cfg.Name then return end
 	self.Search[#self.Search + 1] = {
 		name = cfg.Name, key = (cfg.Name .. " " .. (cfg.Description or "")):lower(),
@@ -144,8 +185,9 @@ function Window:_doSearch(q)
 		if e.key:find(q, 1, true) then
 			n = n + 1
 			if n > 40 then break end
-			local b = new("TextButton", { Size = UDim2.new(1, 0, 0, 42), BackgroundColor3 = "@Card", BackgroundTransparency = 0, LayoutOrder = n }, sp)
+			local b = new("TextButton", { Size = UDim2.new(1, 0, 0, 42), BackgroundColor3 = "@Card", BackgroundTransparency = GLASS.Card, LayoutOrder = n }, sp)
 			corner(b, 8)
+			stroke(b, "Stroke", 1, 0.92)
 			new("TextLabel", { Text = e.name, Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 16),
 				TextColor3 = "@Text", TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, b)
 			new("TextLabel", { Text = e.tab.Name .. "  /  " .. (e.sec.Name or "General"), Font = Enum.Font.Gotham, TextSize = 11,
@@ -171,7 +213,7 @@ function Window:_goto(e)
 		local y = (e.row.AbsolutePosition.Y - page.AbsolutePosition.Y) / s + page.CanvasPosition.Y - 8
 		page.CanvasPosition = Vector2.new(0, math.max(0, y))
 		if e.row:IsA("GuiObject") then
-			tw(e.row, 0.12, { BackgroundTransparency = 0.35 })
+			tw(e.row, 0.12, { BackgroundTransparency = 0.8 })
 			task.delay(0.7, function() if e.row.Parent then tw(e.row, 0.3, { BackgroundTransparency = 1 }) end end)
 		end
 	end)
@@ -273,7 +315,7 @@ function Window:CreateTab(name, icon, opts)
 
 	local page = new("ScrollingFrame", {
 		Name = name, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false,
-		ScrollBarThickness = 3, ScrollBarImageColor3 = "@Stroke", CanvasSize = UDim2.new(),
+		ScrollBarThickness = 3, ScrollBarImageColor3 = "@Stroke", ScrollBarImageTransparency = 0.6, CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y,
 		ElasticBehavior = Enum.ElasticBehavior.Never, VerticalScrollBarInset = Enum.ScrollBarInset.None,
 	}, self.Pages)
@@ -295,14 +337,15 @@ function Tab:CreateSection(name, icon, opts)
 	if type(icon) == "table" then opts = icon; icon = nil end
 	opts = opts or {}
 	local win = self.Window
+	win._lastCreate = os.clock()
 	local sec = setmetatable({ Tab = self, Name = name, Est = 44, Side = opts.Side, Collapsed = false }, Section)
 	local frame = new("Frame", {
 		Name = name or "Section", Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = "@Card", LayoutOrder = #self.Sections + 1,
 	}, self.Col1)
-	corner(frame, 10)
-	stroke(frame, "Stroke", 1, 0.45)
-	win:_a(frame, 0.8)
+	corner(frame, 12)
+	stroke(frame, "Stroke", 1, 0.9)
+	win:_a(frame, GLASS.Card)
 	pad(frame, 6, 6, 6, 6)
 	list(frame, 2)
 	sec.Frame = frame
@@ -334,11 +377,22 @@ function Tab:CreateSection(name, icon, opts)
 	return sec
 end
 
+function Tab:RemoveSection(sec)
+	for i, s in ipairs(self.Sections) do
+		if s == sec then table.remove(self.Sections, i) break end
+	end
+	if sec.Frame then sec.Frame:Destroy() end
+	if self._def == sec then self._def = nil end
+	self:_queueLayout()
+end
+
 function Section:SetCollapsed(c)
 	self.Collapsed = c
 	self.Body.Visible = not c
 	if self.Chevron then tw(self.Chevron, 0.15, { Rotation = c and -90 or 0 }) end
 end
+
+function Section:Remove() self.Tab:RemoveSection(self) end
 
 function Tab:_default()
 	if not self._def then self._def = self:CreateSection(nil) end
@@ -366,26 +420,33 @@ function RageHub:CreateWindow(cfg)
 	self.ToggleKey = cfg.ToggleKey or Enum.KeyCode.RightControl
 	self.UserScale = 1
 	self.Alpha = 0
-	self._alpha, self._sbText, self._onDestroy = {}, {}, {}
+	self._alpha, self._sbText, self._onDestroy, self._logBuf = {}, {}, {}, {}
 	self._order = 0
+	self._lastCreate = os.clock()
 	self.Visible = true
-	self.Collapsed = IsMobile
-	self.AutoExecuteScript = cfg.AutoExecuteScript
-	if cfg.Theme and RageHub.Themes[cfg.Theme] then RageHub:SetTheme(cfg.Theme) end
+	self.Collapsed = cfg.CompactSidebar == true
+	self.AutoExecuteScript = nil
+	if cfg.AutoExecuteURL or cfg.AutoExecuteScript then self:SetAutoExecute(cfg.AutoExecuteURL or cfg.AutoExecuteScript) end
 
 	local size = cfg.Size or Vector2.new(660, 400)
 	local main = new("Frame", {
 		Name = "Window", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(size.X, size.Y), BackgroundColor3 = "@Panel",
+		Size = UDim2.fromOffset(size.X, size.Y), BackgroundColor3 = "@Bg",
 	}, Gui)
 	self.Main = main
 	self.UIScale = new("UIScale", {}, main)
-	corner(main, 14)
-	stroke(main, "Stroke", 1, 0.2)
-	self:_a(main, 1)
+	corner(main, 16)
+	self:_a(main, GLASS.Window)
+	-- glass edge: bright top-left, soft bottom-right
+	local edge = new("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = 1.2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, main)
+	new("UIGradient", { Rotation = 45, Transparency = NumberSequence.new({ kp(0, 0.4), kp(0.5, 0.9), kp(1, 0.68) }) }, edge)
+	-- glass sheen
+	local sheen = new("Frame", { Name = "Sheen", Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(1, 1, 1) }, main)
+	corner(sheen, 16)
+	new("UIGradient", { Rotation = 35, Transparency = NumberSequence.new({ kp(0, 0.9), kp(0.45, 0.97), kp(1, 1) }) }, sheen)
 
 	--// sidebar
-	local sidebar = new("Frame", { Name = "Sidebar", BackgroundTransparency = 1, Size = UDim2.new(0, SB_OPEN, 1, 0) }, main)
+	local sidebar = new("Frame", { Name = "Sidebar", BackgroundTransparency = 1, Size = UDim2.new(0, self.Collapsed and SB_SHUT or SB_OPEN, 1, 0) }, main)
 	self.Sidebar = sidebar
 	local brand = new("TextButton", { Name = "Brand", Size = UDim2.new(1, 0, 0, 58) }, sidebar)
 	local logo = makeLogo(brand, 30)
@@ -402,8 +463,9 @@ function RageHub:CreateWindow(cfg)
 	self._sbText[#self._sbText + 1] = self._tTitle
 	self._sbText[#self._sbText + 1] = self._tSub
 
-	local sb = new("Frame", { Name = "Search", Position = UDim2.fromOffset(10, 60), Size = UDim2.new(1, -20, 0, 30), BackgroundColor3 = "@Elevated" }, sidebar)
-	corner(sb, 8)
+	local sb = new("Frame", { Name = "Search", Position = UDim2.fromOffset(10, 60), Size = UDim2.new(1, -20, 0, 30), BackgroundColor3 = "@Elevated", BackgroundTransparency = GLASS.Elev }, sidebar)
+	corner(sb, 9)
+	stroke(sb, "Stroke", 1, 0.92)
 	local sIc = makeIcon(sb, "search", 14, "Muted")
 	sIc.Instance.Position = UDim2.fromOffset(9, 8)
 	self.SearchBox = new("TextBox", {
@@ -422,7 +484,7 @@ function RageHub:CreateWindow(cfg)
 
 	local foot = new("Frame", { Name = "Footer", AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 54), BackgroundTransparency = 1 }, sidebar)
 	local av = new("ImageLabel", {
-		Position = UDim2.fromOffset(16, 12), Size = UDim2.fromOffset(30, 30), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0,
+		Position = UDim2.fromOffset(16, 12), Size = UDim2.fromOffset(30, 30), BackgroundColor3 = "@Elevated", BackgroundTransparency = 0.85,
 		Image = ("rbxthumb://type=AvatarHeadShot&id=%d&w=100&h=100"):format(LocalPlayer.UserId),
 	}, foot)
 	corner(av, 15)
@@ -437,12 +499,14 @@ function RageHub:CreateWindow(cfg)
 	self._sbText[#self._sbText + 1] = fn
 	self._sbText[#self._sbText + 1] = fu
 
-	--// content
+	--// content (frosted panel)
+	local sw = self.Collapsed and SB_SHUT or SB_OPEN
 	local content = new("Frame", {
-		Name = "Content", Position = UDim2.new(0, SB_OPEN, 0, 8), Size = UDim2.new(1, -SB_OPEN - 8, 1, -16), BackgroundColor3 = "@Bg",
+		Name = "Content", Position = UDim2.new(0, sw, 0, 8), Size = UDim2.new(1, -sw - 8, 1, -16), BackgroundColor3 = "@Card",
 	}, main)
-	corner(content, 10)
-	self:_a(content, 1)
+	corner(content, 12)
+	stroke(content, "Stroke", 1, GLASS.Stroke)
+	self:_a(content, GLASS.Content)
 	self.Content = content
 
 	local header = new("Frame", { Name = "Header", Size = UDim2.new(1, 0, 0, 46), BackgroundTransparency = 1 }, content)
@@ -451,7 +515,7 @@ function RageHub:CreateWindow(cfg)
 		Text = "", Font = Enum.Font.GothamBold, TextSize = 17, TextColor3 = "@Text", Position = UDim2.fromOffset(16, 0),
 		Size = UDim2.new(1, -130, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
 	}, header)
-	new("Frame", { Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = "@Stroke", BackgroundTransparency = 0.5 }, header)
+	new("Frame", { Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = "@Stroke", BackgroundTransparency = 0.92 }, header)
 
 	local function hbtn(iconName, x, cb)
 		local b = new("TextButton", {
@@ -462,34 +526,36 @@ function RageHub:CreateWindow(cfg)
 		local ic = makeIcon(b, iconName, 16, "SubText")
 		ic.Instance.AnchorPoint = Vector2.new(0.5, 0.5)
 		ic.Instance.Position = UDim2.fromScale(0.5, 0.5)
-		b.MouseEnter:Connect(function() tw(b, 0.1, { BackgroundTransparency = 0.3 }) end)
+		b.MouseEnter:Connect(function() tw(b, 0.1, { BackgroundTransparency = 0.85 }) end)
 		b.MouseLeave:Connect(function() tw(b, 0.1, { BackgroundTransparency = 1 }) end)
 		b.Activated:Connect(cb)
 		return ic
 	end
 	hbtn("x", 10, function() self:SetVisible(false) end)
 	self._collapseIcon = hbtn("chevron-left", 46, function() self:SetCollapsed(not self.Collapsed) end)
-	self._collapseIcon.Instance.Rotation = 0
+	self._collapseIcon.Instance.Rotation = self.Collapsed and 180 or 0
 
 	self.Pages = new("Frame", { Name = "Pages", Position = UDim2.fromOffset(0, 47), Size = UDim2.new(1, 0, 1, -47), BackgroundTransparency = 1, ClipsDescendants = true }, content)
 	pad(self.Pages, 10, 10, 4, 0)
 	self.SearchPage = new("ScrollingFrame", {
 		Name = "SearchResults", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ScrollBarThickness = 3,
-		ScrollBarImageColor3 = "@Stroke", CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarImageColor3 = "@Stroke", ScrollBarImageTransparency = 0.6, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
 	}, self.Pages)
 	pad(self.SearchPage, 0, 0, 8, 10)
 	list(self.SearchPage, 6)
 
 	self.Overlay = new("Frame", { Name = "Overlay", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, ZIndex = 50 }, main)
 
-	--// dragging + resizing
+	--// dragging (window can never leave the screen) + resizing
 	local function draggable(handle)
 		handle.InputBegan:Connect(function(i)
 			if not isPointer(i) then return end
-			local start, sp = i.Position, main.Position
+			local start = i.Position
+			local ap, sz = main.AbsolutePosition, main.AbsoluteSize
+			local cx, cy = ap.X + sz.X / 2, ap.Y + sz.Y / 2
 			trackInput(i, function(m)
 				local d = m.Position - start
-				main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
+				self:_setCenter(cx + d.X, cy + d.Y)
 			end)
 		end)
 	end
@@ -508,13 +574,61 @@ function RageHub:CreateWindow(cfg)
 			local s = self.UIScale.Scale
 			main.Size = UDim2.fromOffset(clamp(w0 + (m.Position.X - start.X) / s, 470, 1100), clamp(h0 + (m.Position.Y - start.Y) / s, 290, 800))
 		end, function()
+			self:_clamp()
 			if self.Active then self.Active:_layout() end
 		end)
 	end)
 
-	--// scale
+	--// floating toggle button: a wall on every edge, it can never leave the screen
+	local showFloat = cfg.FloatingButton
+	if showFloat == nil then showFloat = IsMobile end
+	local fb = new("TextButton", {
+		Name = "RageFloat", Size = UDim2.fromOffset(FLOAT, FLOAT), BackgroundColor3 = Color3.new(1, 1, 1), Visible = showFloat,
+	}, Gui)
+	local function floatPos(x, y)
+		local vp = viewport()
+		return clamp(x, 6, math.max(6, vp.X - FLOAT - 6)), clamp(y, 6, math.max(6, vp.Y - FLOAT - 6))
+	end
+	do
+		local x, y = floatPos(14, viewport().Y / 2 - FLOAT / 2)
+		fb.Position = UDim2.fromOffset(x, y)
+	end
+	corner(fb, 14)
+	accentGradient(fb, 45)
+	new("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.7, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, fb)
+	local fbi = makeIcon(fb, "rage", 28, Color3.new(1, 1, 1))
+	fbi.Instance.AnchorPoint = Vector2.new(0.5, 0.5)
+	fbi.Instance.Position = UDim2.fromScale(0.5, 0.5)
+	local moved = false
+	fb.InputBegan:Connect(function(i)
+		if not isPointer(i) then return end
+		moved = false
+		local start, sp = i.Position, fb.AbsolutePosition
+		trackInput(i, function(m)
+			local d = m.Position - start
+			if d.Magnitude > 6 then moved = true end
+			if moved then
+				local x, y = floatPos(sp.X + d.X, sp.Y + d.Y)
+				fb.Position = UDim2.fromOffset(x, y)
+			end
+		end)
+	end)
+	fb.Activated:Connect(function() if not moved then self:Toggle() end end)
+	self.Float = fb
+	function self:SetFloatingButton(v)
+		fb.Visible = v and true or false
+		local x, y = floatPos(fb.AbsolutePosition.X, fb.AbsolutePosition.Y)
+		fb.Position = UDim2.fromOffset(x, y)
+	end
+
+	--// scale + keep everything on screen when the viewport changes
 	self:_applyScale()
-	self.Maid:Add(Gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() self:_applyScale() end))
+	self.Maid:Add(Gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+		self:_applyScale()
+		local x, y = floatPos(fb.AbsolutePosition.X, fb.AbsolutePosition.Y)
+		fb.Position = UDim2.fromOffset(x, y)
+		self:_clamp()
+	end))
 	self:SetCollapsed(self.Collapsed, true)
 
 	--// search box
@@ -523,34 +637,6 @@ function RageHub:CreateWindow(cfg)
 		local id, q = self._sq, self.SearchBox.Text
 		task.delay(0.15, function() if id == self._sq then self:_doSearch(q) end end)
 	end)
-
-	--// floating toggle button (always handy on mobile)
-	local showFloat = cfg.FloatingButton
-	if showFloat == nil then showFloat = IsMobile end
-	local fb = new("TextButton", {
-		Name = "RageFloat", Size = UDim2.fromOffset(46, 46), Position = UDim2.new(0, 14, 0.5, -23),
-		BackgroundColor3 = Color3.new(1, 1, 1), Visible = showFloat,
-	}, Gui)
-	corner(fb, 14)
-	accentGradient(fb, 45)
-	new("UIStroke", { Color = Color3.new(1, 1, 1), Transparency = 0.75, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, fb)
-	local fbi = makeIcon(fb, "rage", 28, Color3.new(1, 1, 1))
-	fbi.Instance.AnchorPoint = Vector2.new(0.5, 0.5)
-	fbi.Instance.Position = UDim2.fromScale(0.5, 0.5)
-	local moved = false
-	fb.InputBegan:Connect(function(i)
-		if not isPointer(i) then return end
-		moved = false
-		local start, sp = i.Position, fb.Position
-		trackInput(i, function(m)
-			local d = m.Position - start
-			if d.Magnitude > 6 then moved = true end
-			if moved then fb.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y) end
-		end)
-	end)
-	fb.Activated:Connect(function() if not moved then self:Toggle() end end)
-	self.Float = fb
-	function self:SetFloatingButton(v) fb.Visible = v and true or false end
 
 	--// keyboard: toggle key, keybind elements, key capture
 	self.Maid:Add(UIS.InputBegan:Connect(function(i, gp)
@@ -580,6 +666,7 @@ function RageHub:CreateWindow(cfg)
 	end
 
 	RageHub.Windows[#RageHub.Windows + 1] = self
+	self:_initCore(cfg)
 	if cfg.StartHidden then self.Visible = true; self:SetVisible(false) end
 	return self
 end
