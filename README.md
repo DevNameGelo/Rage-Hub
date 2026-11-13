@@ -18,7 +18,7 @@ local RageHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/devna
 - **Dashboard** (one line): profile, session time, FPS, ping, players, game, executor, quick actions and an activity log. Fully customizable.
 - **Auto Reconnect + Anti AFK ON by default.** Reconnects after kick, disconnect or any error. If the server doesn't respond it tries the same server, then any server, then hops to other servers and skips full ones.
 - **Config auto save + auto load ON by default.** The library creates the config folder itself.
-- **Built-in Settings tab** (one line): Auto Reconnect, Same Server First, Auto Execute, Anti AFK, Server Hop (least / most / random, retries the next server if one is full), Rejoin, Copy / Join Job ID, UI Scale, Glass Transparency, Toggle Key, Floating Button, Compact Sidebar, Reduce Animations, FPS Cap, Low Graphics, White Screen, Config manager, Unload.
+- **Built-in Settings tab** (one line): Auto Reconnect, Same Server First, Anti AFK, Server Hop (least / most / random, retries the next server if one is full), Rejoin, Copy / Join Job ID, UI Scale, Glass Transparency, Toggle Key, Floating Button, Compact Sidebar, Reduce Animations, FPS Cap, Low Graphics, White Screen, Config manager, Unload.
 
 ## Quick start
 
@@ -29,7 +29,6 @@ local Window = RageHub:CreateWindow({
     Name = "Rage Hub",
     Subtitle = "My Game",
     ToggleKey = Enum.KeyCode.RightControl,   -- PC only, mobile uses the floating button
-    AutoExecuteURL = "https://example.com/my_script.lua",   -- see "Auto Execute" below
 })
 
 local Dash = Window:CreateDashboard()
@@ -43,28 +42,43 @@ Section:CreateToggle({
 })
 
 Window:CreateTabLabel("System")
-Window:CreateSettingsTab()      -- Auto Reconnect, Auto Execute, Anti AFK, Server Hop, FPS, Config ...
+Window:CreateSettingsTab()      -- Auto Reconnect, Anti AFK, Server Hop, FPS, Config ...
 ```
 
 That is all: configs save and load by themselves. A full example is in [`examples/Example.lua`](examples/Example.lua).
 
-## Auto Execute (set by YOU, the script developer)
+## Settings tab: add your own options
 
-Players never type a URL. You put the link of your own script in `CreateWindow`:
+`Window:CreateSettingsTab()` returns the tab, so you can add to it. Built-in sections: `JoinStay`, `Server`, `Interface`, `Performance`, `Config`, `System`.
 
 ```lua
-local Window = RageHub:CreateWindow({
-    Name = "My Hub",
-    AutoExecuteURL = "https://raw.githubusercontent.com/you/repo/main/main.lua",
-    -- or raw code instead of a link:
-    -- AutoExecuteScript = 'loadstring(game:HttpGet("https://..."))()',
-})
--- or later:  Window:SetAutoExecute("https://...")
+local Settings = Window:CreateSettingsTab()
+
+-- your own section next to the built-in ones
+local Mine = Settings:CreateSection("My Options", "star")
+Mine:CreateToggle({ Name = "Auto Collect", Flag = "AutoCollect", Callback = function(v) print(v) end })
+
+-- or add into a built-in section
+Settings.Named.Interface:CreateSlider({ Name = "My Slider", Min = 0, Max = 10, Default = 5, Flag = "MySlider" })
 ```
 
-- URL set: Auto Execute is **ON by default** and re-runs your script after reconnect, rejoin and server hop.
-- URL not set: the Settings tab shows **"Auto Execute URL is not configured yet."** with these instructions, and the toggle stays off.
-- It uses your executor's `queue_on_teleport`. Rejoining by hand from the Roblox menu does not fire a teleport, so use the built-in Rejoin button.
+Everything built in (Auto Reconnect, Anti AFK, Server Hop, FPS, Config ...) appears by itself.
+
+### Auto Execute (opt-in, you set the URL)
+
+Auto Execute is not shown unless **you** add it. The script developer sets the URL in code, players never type anything:
+
+```lua
+Settings:AddAutoExecute({ URL = "https://raw.githubusercontent.com/you/repo/main/main.lua" })
+-- ON by default when a URL is set. Without a URL it shows "URL is not configured yet."
+```
+
+It re-runs your script after reconnect, rejoin and server hop (executor `queue_on_teleport`). You can also pass `AutoExecuteURL` to `CreateWindow` to enable it without a toggle.
+
+### Auto Reconnect and Anti AFK
+
+- **Auto Reconnect** handles kicks, idle kicks (278), "no response from server" (279), disconnects and any other error prompt. It never gives up while the error is on screen: same server, then any server, then hop to other servers (full ones are skipped), with a growing delay, and a watchdog checks every 5 seconds, so it also works after hours of AFK. It also tries to press the prompt's Retry button.
+- **Anti AFK** answers the Idled event, sends a small virtual input pulse every 25-55 s even when Idled never fires, and with **Human Activity** (default on) does a tiny step and camera nudge every few minutes while your character stands still.
 
 ## Dashboard
 
@@ -97,7 +111,7 @@ On by default: **Auto Save** (every change is saved after 1.5 s) and **Auto Load
 ### Library
 | Call | Description |
 |---|---|
-| `RageHub:CreateWindow(cfg)` | `Name, Subtitle, Version, Size (Vector2), ToggleKey, ConfigFolder, ConfigName, AutoExecuteURL, AutoExecuteScript, FloatingButton, CompactSidebar, StartHidden` |
+| `RageHub:CreateWindow(cfg)` | `Name, Subtitle, Version, Size (Vector2), ToggleKey, ConfigFolder, ConfigName, FloatingButton, CompactSidebar, StartHidden` |
 | `RageHub:Notify({Title, Content, Type, Duration, Icon})` | `Type`: `info`, `success`, `warning`, `error` |
 | `RageHub:CreateIcon(parent, name, size, color)` | Use the icons in your own UI. `color` can be a `Color3` or a color key like `"Accent"`, `"Text"` |
 | `RageHub:GetIcons()` / `RageHub:HasIcon(name)` | List icon names |
@@ -105,7 +119,7 @@ On by default: **Auto Save** (every change is saved after 1.5 s) and **Auto Load
 | `RageHub:Unload()` | Remove everything |
 
 ### Window
-`Window:CreateTab(name, icon)` · `Window:CreateDashboard(opts)` · `Window:SetAutoExecute(urlOrCode)` · `Window:Log(text, kind)` · `Window:CreateTabLabel(text)` · `Window:CreateSettingsTab()` · `Window:SelectTab(tabOrName)` · `Window:Toggle()` · `Window:SetVisible(bool)` · `Window:SetScale(n)` · `Window:SetTransparency(0-0.8)` · `Window:SetCollapsed(bool)` · `Window:SetToggleKey(key)` · `Window:Notify(cfg)` · `Window:Rejoin()` · `Window:ServerHop("Least Players" | "Most Players" | "Random")` · `Window:JoinServer(jobId)` · `Window:SaveConfig(name)` · `Window:LoadConfig(name)` · `Window:DeleteConfig(name)` · `Window:ListConfigs()` · `Window:AutoLoad()` · `Window:Destroy()`
+`Window:CreateTab(name, icon)` · `Window:CreateDashboard(opts)` · `Window:Log(text, kind)` · `Window:CreateTabLabel(text)` · `Window:CreateSettingsTab()` · `Window:SelectTab(tabOrName)` · `Window:Toggle()` · `Window:SetVisible(bool)` · `Window:SetScale(n)` · `Window:SetTransparency(0-0.8)` · `Window:SetCollapsed(bool)` · `Window:SetToggleKey(key)` · `Window:Notify(cfg)` · `Window:Rejoin()` · `Window:ServerHop("Least Players" | "Most Players" | "Random")` · `Window:JoinServer(jobId)` · `Window:SaveConfig(name)` · `Window:LoadConfig(name)` · `Window:DeleteConfig(name)` · `Window:ListConfigs()` · `Window:AutoLoad()` · `Window:Destroy()`
 
 ### Tab / Section
 `Tab:CreateSection(name, icon, {Side = "Left" | "Right"})`. You can also call any element directly on a tab and it goes into a default section.

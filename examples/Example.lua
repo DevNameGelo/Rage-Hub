@@ -8,10 +8,6 @@ local Window = RageHub:CreateWindow({
 	ToggleKey = Enum.KeyCode.RightControl,   -- PC. On mobile use the floating button
 	ConfigFolder = "RageHub",                -- config files go to <executor workspace>/RageHub/configs
 
-	-- AUTO EXECUTE: put the link of YOUR script here (the script that loads this hub).
-	-- Rage Hub re-runs it after reconnect / rejoin / server hop.
-	-- Leave it out and the Auto Execute option shows "URL is not configured yet".
-	AutoExecuteURL = "https://raw.githubusercontent.com/devnamegelo/Rage-Hub/main/examples/Example.lua",
 })
 
 ---------------------------------------------------------------- Dashboard (fully customizable)
@@ -90,9 +86,10 @@ Visuals:CreateSection("ESP", "target"):CreateColorPicker({ Name = "ESP Color", D
 	Callback = function(c) print("ESP color", c) end })
 
 ---------------------------------------------------------------- built-in settings
--- Auto Reconnect, Anti AFK, Auto Execute, Server Hop, FPS, Config ... (Anti AFK + Auto Reconnect are ON by default)
+-- Auto Reconnect, Anti AFK, Server Hop, FPS, Config ... (Anti AFK + Auto Reconnect are ON by default)
 -- Configs are saved and loaded automatically, nothing else to call.
 Window:CreateTabLabel("System")
-Window:CreateSettingsTab()
+local Settings = Window:CreateSettingsTab()
+Settings:CreateSection("My Options", "star"):CreateToggle({ Name = "Auto Collect", Flag = "AutoCollect" })  -- add your own settings
 
 RageHub:Notify({ Title = "Rage Hub", Content = "Loaded successfully", Type = "success" })

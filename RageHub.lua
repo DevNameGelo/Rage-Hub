@@ -2216,12 +2216,82 @@ local function fmtTime(s)
 end
 
 --// background features (work with or without the Settings tab) -----------------------
+-- true while Roblox shows an error / disconnect / kick prompt (idle kick 278, no response 279, ...)
+local function brokenState()
+	local ok, msg = pcall(function() return GuiService:GetErrorMessage() end)
+	if ok and msg and msg ~= "" then return true end
+	local found = false
+	pcall(function()
+		if CoreGui.RobloxPromptGui.promptOverlay:FindFirstChild("ErrorPrompt") then found = true end
+	end)
+	return found
+end
+
+-- best effort: press the Retry / Reconnect button of the error prompt
+local function pressRetry()
+	pcall(function()
+		local prompt = CoreGui.RobloxPromptGui.promptOverlay:FindFirstChild("ErrorPrompt")
+		if not prompt then return end
+		for _, d in ipairs(prompt:GetDescendants()) do
+			if d:IsA("TextButton") or d:IsA("ImageButton") then
+				local label = d.Name .. " " .. (d:IsA("TextButton") and d.Text or "")
+				for _, c in ipairs(d:GetDescendants()) do
+					if c:IsA("TextLabel") then label = label .. " " .. c.Text end
+				end
+				label = label:lower()
+				if label:find("retry") or label:find("reconnect") or label:find("rejoin") then
+					if getconnections then
+						for _, ev in ipairs({ d.MouseButton1Click, d.Activated, d.MouseButton1Down, d.MouseButton1Up }) do
+							for _, c in ipairs(getconnections(ev)) do pcall(function() c:Fire() end) end
+						end
+					elseif firesignal then
+						pcall(firesignal, d.MouseButton1Click)
+					end
+					return
+				end
+			end
+		end
+	end)
+end
+
 local function makeFeatures(win)
 	local F = {}
 
-	-- Anti AFK
-	local afkConn, afkOff = nil, {}
+	-- Anti AFK: three layers so neither Roblox nor the game thinks you are idle
+	--  1) the Idled event answers with a virtual right click (resets the 20 minute idle kick)
+	--  2) every 25-55 s a small virtual input pulse, even if Idled never fires
+	--  3) "Human Activity": every few minutes a tiny step + camera nudge, only while the character stands still
+	local afkConn, afkOff, afkTok = nil, {}, 0
+	local function nudge()
+		pcall(function()
+			local ch = LocalPlayer.Character
+			local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+			if not hum or hum.Health <= 0 or hum.Sit or hum.MoveDirection.Magnitude > 0 then return end
+			local dir = Vector3.new(math.random(-10, 10) / 10, 0, math.random(-10, 10) / 10)
+			if dir.Magnitude < 0.3 then dir = Vector3.new(0, 0, -1) end
+			task.spawn(function()
+				for _ = 1, 5 do hum:Move(dir.Unit, false); task.wait(0.03) end
+				hum:Move(Vector3.zero, false)
+			end)
+			local cam = workspace.CurrentCamera
+			if cam then cam.CFrame = cam.CFrame * CFrame.Angles(0, math.rad(math.random(-5, 5) / 10), 0) end
+		end)
+	end
+	local function pulse(deep)
+		pcall(function()
+			local vu = svc("VirtualUser")
+			vu:CaptureController()
+			vu:ClickButton2(Vector2.new(0, 0))
+		end)
+		pcall(function()
+			local vim = svc("VirtualInputManager")
+			local vp = workspace.CurrentCamera.ViewportSize
+			vim:SendMouseMoveEvent(vp.X / 2 + math.random(-4, 4), vp.Y / 2 + math.random(-4, 4), game)
+		end)
+		if deep then nudge() end
+	end
 	function F.AntiAfk(on)
+		afkTok = afkTok + 1
 		if afkConn then afkConn:Disconnect(); afkConn = nil end
 		for _, c in ipairs(afkOff) do pcall(function() c:Enable() end) end
 		afkOff = {}
@@ -2234,19 +2304,25 @@ local function makeFeatures(win)
 				end
 			end
 		end)
-		afkConn = LocalPlayer.Idled:Connect(function()
-			pcall(function()
-				local vu = svc("VirtualUser")
-				vu:CaptureController()
-				vu:ClickButton2(Vector2.new())
-			end)
+		afkConn = LocalPlayer.Idled:Connect(function() pulse(false) end)
+		local tok = afkTok
+		task.spawn(function()
+			local n = 0
+			while afkTok == tok do
+				task.wait(math.random(25, 55))
+				if afkTok ~= tok then break end
+				n = n + 1
+				pulse(RageHub.Flags.RH_AfkActive ~= false and n % 5 == 0)
+			end
 		end)
 	end
 
-	-- Auto Reconnect: kick, disconnect, error prompt, lost connection.
-	-- 1) same server  2) any server of this game  3) hop to other servers (skips full ones)
-	local conns, busy = {}, false
+	-- Auto Reconnect: kick, idle kick, disconnect, "no response from server" (279) and every other error prompt.
+	-- It never gives up: same server -> any server -> hop to other servers, with a growing delay,
+	-- for as long as the error is still on screen. A watchdog re-checks every 5 s.
+	local conns, busy, wd = {}, false, 0
 	local function clear()
+		wd = wd + 1
 		for _, c in ipairs(conns) do pcall(function() c:Disconnect() end) end
 		conns = {}
 	end
@@ -2255,39 +2331,44 @@ local function makeFeatures(win)
 		busy = true
 		RageHub:Notify({ Title = "Auto Reconnect", Content = "Connection lost. Reconnecting...", Type = "warning", Duration = 5 })
 		task.spawn(function()
-			for attempt = 1, 16 do
-				if not RageHub.Flags.RH_AutoReconnect then break end
+			local attempt = 0
+			while RageHub.Flags.RH_AutoReconnect and win.Main.Parent do
+				attempt = attempt + 1
 				win:QueueAutoExecute()
+				if attempt % 4 == 1 then pressRetry() end
 				local ok
 				if attempt <= 2 and RageHub.Flags.RH_RejoinSame ~= false and game.JobId ~= "" then
 					ok = waitTeleport(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end, 12)
-				elseif attempt <= 4 then
-					ok = waitTeleport(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end, 12)
-				else
+				elseif attempt % 3 == 0 then
 					ok = hopBlocking("Random")
+				else
+					ok = waitTeleport(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end, 12)
 				end
-				if ok then task.wait(20) end -- teleport accepted: if we are still here, it stalled
-				RageHub:Notify({ Title = "Auto Reconnect", Content = ("Attempt %d failed. Trying %s..."):format(attempt, attempt < 4 and "again" or "another server"), Type = "warning", Duration = 4 })
-				task.wait(math.min(2 * attempt, 10))
+				if ok then task.wait(30) end -- accepted: if we are still here and the error is back, try again
+				if not brokenState() then
+					task.wait(8)
+					if not brokenState() then break end -- error is gone, teleport is in progress
+				end
+				if attempt <= 3 or attempt % 5 == 0 then
+					RageHub:Notify({ Title = "Auto Reconnect", Content = ("Attempt %d failed. Still trying..."):format(attempt), Type = "warning", Duration = 4 })
+				end
+				task.wait(math.min(3 * attempt, 45))
 			end
 			busy = false
 		end)
 	end
-	local function guarded()
-		if os.clock() - lastOwnTeleport < 30 then return end -- our own teleport / a game teleport, not a disconnect
-		reconnect()
+	local function check()
+		task.wait(1)
+		if brokenState() then reconnect() end
 	end
 	function F.Reconnect(on)
 		clear()
 		if not on then return end
-		conns[#conns + 1] = GuiService.ErrorMessageChanged:Connect(function()
-			local ok, msg = pcall(function() return GuiService:GetErrorMessage() end)
-			if ok and msg and msg ~= "" then guarded() end
-		end)
+		conns[#conns + 1] = GuiService.ErrorMessageChanged:Connect(function() task.spawn(check) end)
 		pcall(function()
 			conns[#conns + 1] = svc("NetworkClient").ChildRemoved:Connect(function()
-				task.wait(2)
-				guarded()
+				task.wait(3)
+				check()
 			end)
 		end)
 		task.spawn(function()
@@ -2296,9 +2377,16 @@ local function makeFeatures(win)
 			end)
 			if ok and overlay and RageHub.Flags.RH_AutoReconnect then
 				conns[#conns + 1] = overlay.ChildAdded:Connect(function(c)
-					if c.Name == "ErrorPrompt" then guarded() end
+					if c.Name == "ErrorPrompt" then task.spawn(check) end
 				end)
-				if overlay:FindFirstChild("ErrorPrompt") then guarded() end
+			end
+		end)
+		-- watchdog: catches anything the events missed (e.g. hours of AFK, a prompt that came back)
+		local id = wd
+		task.spawn(function()
+			while wd == id and win.Main.Parent do
+				task.wait(5)
+				if not busy and brokenState() then reconnect() end
 			end
 		end)
 	end
@@ -2399,44 +2487,13 @@ function Window:CreateSettingsTab(opts)
 		Flag = "RH_RejoinSame", Default = true,
 	})
 
-	local ready0 = win:AutoExecuteReady()
-	local autoEl, autoHint, autoHelp
-	local wasReady = ready0
-	autoEl = js:CreateToggle({
-		Name = "Auto Execute", Description = ready0 and "Runs your script again after reconnect or server hop." or "URL is not configured yet.",
-		Flag = "RH_AutoExecute", Default = ready0, CallOnCreate = false,
-		Callback = function(v)
-			if v and not win:AutoExecuteReady() then
-				autoEl:Set(false, true)
-				RageHub:Notify({ Title = "Auto Execute", Content = "URL is not configured yet.", Type = "warning" })
-				return
-			end
-			if v and not queueTp then
-				RageHub:Notify({ Title = "Auto Execute", Content = "Your executor doesn't support queue_on_teleport.", Type = "error" })
-			end
-			win._queued = false
-		end,
-	})
-	autoHint = js:CreateLabel({ Text = "Auto Execute URL is not configured yet.", Icon = "warning", IconColor = "Warning" })
-	autoHelp = js:CreateParagraph({
-		Title = "How to enable it",
-		Content = 'In your script add AutoExecuteURL = "https://your.link/script.lua" inside RageHub:CreateWindow({ ... }), or call Window:SetAutoExecute("https://...").',
-	})
-	local function refreshAuto()
-		local ready = win:AutoExecuteReady()
-		autoHint:SetVisible(not ready)
-		autoHelp.Row.Visible = not ready
-		autoEl:SetDescription(ready and "Runs your script again after reconnect or server hop." or "URL is not configured yet.")
-		if not ready and autoEl.Value then autoEl:Set(false, true) end
-		if ready and not wasReady then autoEl:Set(true, true) end
-		wasReady = ready
-	end
-	win._onAutoExec = refreshAuto
-	refreshAuto()
-
 	js:CreateToggle({
 		Name = "Anti AFK", Description = "Never get kicked for being idle.",
 		Flag = "RH_AntiAfk", Default = true, CallOnCreate = false, Callback = function(v) win.F.AntiAfk(v) end,
+	})
+	js:CreateToggle({
+		Name = "Human Activity", Description = "Tiny random input and movement so games can't tell you're AFK.",
+		Flag = "RH_AfkActive", Default = true,
 	})
 
 	--// Server -----------------------------------------------------------------
@@ -2547,7 +2604,40 @@ function Window:CreateSettingsTab(opts)
 	sy:CreateButton({ Name = "Unload Rage Hub", Description = "Closes the UI and stops every built-in feature.", ButtonText = "Unload", Icon = "power", Danger = true,
 		Callback = function() RageHub:Unload() end })
 
+	tab.Named = { JoinStay = js, Server = sv, Interface = ui, Performance = pf, Config = cf, System = sy }
 	return tab
+end
+
+--// Auto Execute is opt-in: the scripter adds it to the Settings tab and sets the URL in code
+-- Settings:AddAutoExecute({ URL = "https://raw.githubusercontent.com/you/repo/main/main.lua" })
+function Tab:AddAutoExecute(cfg)
+	if type(cfg) == "string" then cfg = { URL = cfg } end
+	cfg = cfg or {}
+	local win = self.Window
+	win:SetAutoExecute(cfg.URL or cfg.Script)
+	local sec = (self.Named and self.Named.JoinStay) or self:CreateSection("Auto Execute", "refresh")
+	local ready = win:AutoExecuteReady()
+	local el
+	el = sec:CreateToggle({
+		Name = "Auto Execute", Description = ready and "Runs the script again after reconnect or server hop." or "URL is not configured yet.",
+		Flag = "RH_AutoExecute", Default = ready and cfg.Default ~= false, CallOnCreate = false,
+		Callback = function(v)
+			if v and not win:AutoExecuteReady() then
+				el:Set(false, true)
+				RageHub:Notify({ Title = "Auto Execute", Content = "URL is not configured yet.", Type = "warning" })
+				return
+			end
+			if v and not queueTp then
+				RageHub:Notify({ Title = "Auto Execute", Content = "Your executor doesn't support queue_on_teleport.", Type = "error" })
+			end
+			win._queued = false
+		end,
+	})
+	if not ready then
+		sec:CreateLabel({ Text = "Auto Execute URL is not configured yet.", Icon = "warning", IconColor = "Warning" })
+		sec:CreateParagraph({ Title = "How to set it", Content = 'Settings:AddAutoExecute({ URL = "https://your.link/script.lua" })' })
+	end
+	return el
 end
 
 
