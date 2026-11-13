@@ -318,63 +318,18 @@ end
 local function makeFeatures(win)
 	local F = {}
 
-	-- Anti AFK: three layers so neither Roblox nor the game thinks you are idle
-	--  1) the Idled event answers with a virtual right click (resets the 20 minute idle kick)
-	--  2) every 25-55 s a small virtual input pulse, even if Idled never fires
-	--  3) "Human Activity": every few minutes a tiny step + camera nudge, only while the character stands still
-	local afkConn, afkOff, afkTok = nil, {}, 0
-	local function nudge()
-		pcall(function()
-			local ch = LocalPlayer.Character
-			local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-			if not hum or hum.Health <= 0 or hum.Sit or hum.MoveDirection.Magnitude > 0 then return end
-			local dir = Vector3.new(math.random(-10, 10) / 10, 0, math.random(-10, 10) / 10)
-			if dir.Magnitude < 0.3 then dir = Vector3.new(0, 0, -1) end
-			task.spawn(function()
-				for _ = 1, 5 do hum:Move(dir.Unit, false); task.wait(0.03) end
-				hum:Move(Vector3.zero, false)
-			end)
-			local cam = workspace.CurrentCamera
-			if cam then cam.CFrame = cam.CFrame * CFrame.Angles(0, math.rad(math.random(-5, 5) / 10), 0) end
-		end)
-	end
-	local function pulse(deep)
-		pcall(function()
-			local vu = svc("VirtualUser")
-			vu:CaptureController()
-			vu:ClickButton2(Vector2.new(0, 0))
-		end)
-		pcall(function()
-			local vim = svc("VirtualInputManager")
-			local vp = workspace.CurrentCamera.ViewportSize
-			vim:SendMouseMoveEvent(vp.X / 2 + math.random(-4, 4), vp.Y / 2 + math.random(-4, 4), game)
-		end)
-		if deep then nudge() end
-	end
+	-- Anti AFK: the standard, low-profile method. When Roblox fires Idled, answer with a virtual click.
+	-- No camera / character movement, no extra input, nothing from the game is touched.
+	local afkConn
 	function F.AntiAfk(on)
-		afkTok = afkTok + 1
 		if afkConn then afkConn:Disconnect(); afkConn = nil end
-		for _, c in ipairs(afkOff) do pcall(function() c:Enable() end) end
-		afkOff = {}
 		if not on then return end
-		pcall(function()
-			if getconnections then
-				for _, c in ipairs(getconnections(LocalPlayer.Idled)) do
-					c:Disable()
-					afkOff[#afkOff + 1] = c
-				end
-			end
-		end)
-		afkConn = LocalPlayer.Idled:Connect(function() pulse(false) end)
-		local tok = afkTok
-		task.spawn(function()
-			local n = 0
-			while afkTok == tok do
-				task.wait(math.random(25, 55))
-				if afkTok ~= tok then break end
-				n = n + 1
-				pulse(RageHub.Flags.RH_AfkActive ~= false and n % 5 == 0)
-			end
+		afkConn = LocalPlayer.Idled:Connect(function()
+			pcall(function()
+				local vu = svc("VirtualUser")
+				vu:CaptureController()
+				vu:ClickButton2(Vector2.new())
+			end)
 		end)
 	end
 
@@ -398,7 +353,7 @@ local function makeFeatures(win)
 				win:QueueAutoExecute()
 				if attempt % 4 == 1 then pressRetry() end
 				local ok
-				if attempt <= 2 and RageHub.Flags.RH_RejoinSame ~= false and game.JobId ~= "" then
+				if attempt <= 2 and game.JobId ~= "" then
 					ok = waitTeleport(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end, 12)
 				elseif attempt % 3 == 0 then
 					ok = hopBlocking("Random")
@@ -463,10 +418,9 @@ function Window:_initCore(cfg)
 		self:_loadMeta()
 	end
 
-	-- defaults: Anti AFK, Auto Reconnect and "same server first" are ON
+	-- defaults: Anti AFK and Auto Reconnect are ON
 	RageHub.Flags.RH_AntiAfk = true
 	RageHub.Flags.RH_AutoReconnect = true
-	RageHub.Flags.RH_RejoinSame = true
 	self.F = makeFeatures(self)
 	self.F.AntiAfk(true)
 	self.F.Reconnect(true)
@@ -540,21 +494,13 @@ function Window:CreateSettingsTab(opts)
 	--// Join & Stay ------------------------------------------------------------
 	local js = tab:CreateSection("Join & Stay", "refresh")
 	js:CreateToggle({
-		Name = "Auto Reconnect", Description = "After a kick, disconnect or error it rejoins. If the server isn't responding it joins another one.",
+		Name = "Auto Reconnect", Description = "After a kick, disconnect or error it rejoins the same server. If it can't, it joins another server.",
 		Flag = "RH_AutoReconnect", Default = true, CallOnCreate = false, Callback = function(v) win.F.Reconnect(v) end,
-	})
-	js:CreateToggle({
-		Name = "Same Server First", Description = "Try to come back to this server before looking for another.",
-		Flag = "RH_RejoinSame", Default = true,
 	})
 
 	js:CreateToggle({
 		Name = "Anti AFK", Description = "Never get kicked for being idle.",
 		Flag = "RH_AntiAfk", Default = true, CallOnCreate = false, Callback = function(v) win.F.AntiAfk(v) end,
-	})
-	js:CreateToggle({
-		Name = "Human Activity", Description = "Tiny random input and movement so games can't tell you're AFK.",
-		Flag = "RH_AfkActive", Default = true,
 	})
 
 	--// Server -----------------------------------------------------------------

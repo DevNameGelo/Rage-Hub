@@ -18,7 +18,7 @@ local RageHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/devna
 - **Dashboard** (one line): profile, session time, FPS, ping, players, game, executor, quick actions and an activity log. Fully customizable.
 - **Auto Reconnect + Anti AFK ON by default.** Reconnects after kick, disconnect or any error. If the server doesn't respond it tries the same server, then any server, then hops to other servers and skips full ones.
 - **Config auto save + auto load ON by default.** The library creates the config folder itself.
-- **Built-in Settings tab** (one line): Auto Reconnect, Same Server First, Anti AFK, Server Hop (least / most / random, retries the next server if one is full), Rejoin, Copy / Join Job ID, UI Scale, Glass Transparency, Toggle Key, Floating Button, Compact Sidebar, Reduce Animations, FPS Cap, Low Graphics, White Screen, Config manager, Unload.
+- **Built-in Settings tab** (one line): Auto Reconnect, Anti AFK, Server Hop (least / most / random, retries the next server if one is full), Rejoin, Copy / Join Job ID, UI Scale, Glass Transparency, Toggle Key, Floating Button, Compact Sidebar, Reduce Animations, FPS Cap, Low Graphics, White Screen, Config manager, Unload.
 
 ## Quick start
 
@@ -77,8 +77,8 @@ It re-runs your script after reconnect, rejoin and server hop (executor `queue_o
 
 ### Auto Reconnect and Anti AFK
 
-- **Auto Reconnect** handles kicks, idle kicks (278), "no response from server" (279), disconnects and any other error prompt. It never gives up while the error is on screen: same server, then any server, then hop to other servers (full ones are skipped), with a growing delay, and a watchdog checks every 5 seconds, so it also works after hours of AFK. It also tries to press the prompt's Retry button.
-- **Anti AFK** answers the Idled event, sends a small virtual input pulse every 25-55 s even when Idled never fires, and with **Human Activity** (default on) does a tiny step and camera nudge every few minutes while your character stands still.
+- **Auto Reconnect** handles kicks, idle kicks (278), "no response from server" (279), disconnects and any other error prompt. It rejoins the **same server** first, then any server, then hops to other servers (full ones are skipped). It never gives up while the error is on screen, with a growing delay and a watchdog that checks every 5 seconds.
+- **Anti AFK** uses the standard low-profile method: it answers Roblox's Idled event with a virtual click. It does not move the camera or the character and does not touch the game's own connections, to stay under anti-cheat radar.
 
 ## Dashboard
 
